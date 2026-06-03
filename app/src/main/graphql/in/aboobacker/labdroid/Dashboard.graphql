@@ -1,0 +1,100 @@
+query DashboardQuery {
+  currentUser {
+    name
+    username
+    id
+    publicEmail
+    avatarUrl
+    bio
+    jobTitle
+    location
+    organization
+    webUrl
+    duoClassicChatAvailable
+    duoChatAvailableFeatures
+    todos(state: pending) {
+      count
+    }
+    starredProjects(first: 10) {
+      nodes {
+        id
+        name
+        nameWithNamespace
+        description
+        starCount
+        forksCount
+        fullPath
+        visibility
+        avatarUrl
+        lastActivityAt
+        webUrl
+        maxAccessLevel {
+          integerValue
+          stringValue
+        }
+        userPermissions {
+          pushCode
+          downloadCode
+          adminProject
+          adminIssue
+          createIssue
+          createMergeRequestIn
+        }
+      }
+      count
+    }
+    projectMemberships(first: 10) {
+      nodes {
+        accessLevel {
+          integerValue
+          stringValue
+        }
+        project {
+          id
+          name
+          nameWithNamespace
+          description
+          fullPath
+          avatarUrl
+          starCount
+          forksCount
+          visibility
+          lastActivityAt
+          webUrl
+          maxAccessLevel {
+            integerValue
+            stringValue
+          }
+          userPermissions {
+            pushCode
+            downloadCode
+            adminProject
+            adminIssue
+            createIssue
+            createMergeRequestIn
+          }
+        }
+      }
+    }
+    groups(first: 10) {
+      count
+      nodes {
+        name
+        id
+        visibility
+        avatarUrl
+        groupMembersCount
+        maxAccessLevel {
+          integerValue
+          stringValue
+        }
+        userPermissions {
+          readGroup
+          createProjects
+          changeGroup
+          removeGroup
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,35 @@
+query ProjectsQuery($membership: Boolean, $search: String) {
+  projects(membership: $membership, search: $search, first: 20) {
+    nodes {
+      id
+      name
+      fullPath
+      nameWithNamespace
+      description
+      avatarUrl
+      starCount
+      forksCount
+      lastActivityAt
+      visibility
+      webUrl
+    }
+  }
+}
+
+query GroupsQuery($search: String) {
+  currentUser {
+    groups(search: $search) {
+      nodes {
+        id
+        name
+        path
+        fullName
+        fullPath
+        description
+        avatarUrl
+        webUrl
+        visibility
+      }
+    }
+  }
+}
