@@ -75,6 +75,8 @@ dependencies {
     implementation(libs.okhttp.logging)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
+    ksp(libs.metadata.kotlin)
+    annotationProcessor(libs.metadata.kotlin)
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.lifecycle.viewmodel.navigation3)

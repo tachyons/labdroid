@@ -7,3 +7,16 @@ plugins {
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.apollo) apply false
 }
+
+subprojects {
+    configurations.all {
+        resolutionStrategy.eachDependency {
+            if (requested.group == "org.jetbrains.kotlinx" && requested.name == "kotlinx-metadata-jvm") {
+                useTarget("org.jetbrains.kotlin:kotlin-metadata-jvm:${libs.versions.kotlin.metadata.get()}")
+            }
+            if (requested.group == "org.jetbrains.kotlin" && requested.name == "kotlin-metadata-jvm") {
+                useVersion(libs.versions.kotlin.metadata.get())
+            }
+        }
+    }
+}
