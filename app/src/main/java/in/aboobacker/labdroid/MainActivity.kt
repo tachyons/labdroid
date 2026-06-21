@@ -38,13 +38,24 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.scene.DialogSceneStrategy
 import androidx.navigation3.ui.NavDisplay
 import dagger.hilt.android.AndroidEntryPoint
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.compose.ui.platform.LocalContext
+import androidx.work.Constraints
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
 import `in`.aboobacker.labdroid.ui.components.DetailTopBar
+import `in`.aboobacker.labdroid.worker.TodoWorker
+import java.util.concurrent.TimeUnit
 import `in`.aboobacker.labdroid.ui.components.HomeBottomNavigation
 import `in`.aboobacker.labdroid.ui.components.HomeTopBar
 import `in`.aboobacker.labdroid.ui.components.LocalTopBarActions
 import `in`.aboobacker.labdroid.ui.components.TopBarActions
 import `in`.aboobacker.labdroid.ui.screens.LoginScreen
 import `in`.aboobacker.labdroid.ui.theme.LabdroidTheme
+import androidx.wear.compose.material3.MaterialTheme as WearMaterialTheme
 import `in`.aboobacker.labdroid.ui.viewmodel.AuthState
 import `in`.aboobacker.labdroid.ui.viewmodel.AuthViewModel
 import `in`.aboobacker.labdroid.ui.viewmodel.SettingsViewModel
@@ -78,24 +89,35 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         authService = AuthorizationService(this)
         enableEdgeToEdge()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 101)
+            }
+        }
+
         setContent {
+            val context = LocalContext.current
+            val isWatch = remember {
+                context.packageManager.hasSystemFeature(PackageManager.FEATURE_WATCH)
+            }
             val settingsViewModel: SettingsViewModel = hiltViewModel()
             val isDarkMode by settingsViewModel.isDarkMode.collectAsState()
 
-            LabdroidTheme(darkTheme = isDarkMode) {
-                val authViewModel: AuthViewModel = hiltViewModel()
-                val authState by authViewModel.authState.collectAsState()
-                val currentUser by authViewModel.currentUser.collectAsState()
+            if (isWatch) {
+                WearMaterialTheme {
+                    val authViewModel: AuthViewModel = hiltViewModel()
+                    val authState by authViewModel.authState.collectAsState()
+                    val currentUser by authViewModel.currentUser.collectAsState()
 
-                LaunchedEffect(authState) {
-                    if (authState is AuthState.Authenticated) {
-                        settingsViewModel.toggleDarkMode(isDarkMode) // Ensure sync if needed, though state is already from store
+                    LaunchedEffect(authState) {
+                        if (authState is AuthState.Authenticated) {
+                            scheduleTodoWorker()
+                        } else if (authState is AuthState.Unauthenticated) {
+                            WorkManager.getInstance(this@MainActivity).cancelUniqueWork("TodoWorker")
+                        }
                     }
-                }
 
-                val topBarActions = remember { TopBarActions() }
-
-                CompositionLocalProvider(LocalTopBarActions provides topBarActions) {
                     val navigationState = rememberNavigationState(
                         startRoute = Screen.Projects,
                         topLevelRoutes = setOf(
@@ -115,97 +137,11 @@ class MainActivity : ComponentActivity() {
 
                     when (val state = authState) {
                         is AuthState.Authenticated -> {
-                            val currentBackStack =
-                                navigationState.backStacks[navigationState.topLevelRoute]
-                            val currentScreen =
-                                (currentBackStack?.lastOrNull() ?: navigationState.startRoute) as Screen
-                            val isTopLevel = currentScreen.isTopLevel
-                            val hideNavigation = currentScreen.hideNavigation
-
-                            LaunchedEffect(currentScreen) {
-                                topBarActions.topBar = null
-                            }
-
-                            val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(
-                                rememberTopAppBarState()
+                            NavDisplay(
+                                entries = navigationState.toEntries(entryProvider),
+                                onBack = { navigator.goBack() },
+                                sceneStrategies = remember { listOf(DialogSceneStrategy<NavKey>()) }
                             )
-
-                            val content = @Composable {
-                                Scaffold(
-                                    modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-                                    topBar = {
-                                        val customTopBar = topBarActions.topBar
-                                        if (customTopBar != null) {
-                                            customTopBar()
-                                        } else if (isTopLevel) {
-                                            HomeTopBar(
-                                                user = currentUser,
-                                                title = (currentScreen as? Screen)?.getTitle()
-                                                    ?: "GitLab",
-                                                scrollBehavior = scrollBehavior,
-                                                onSearchClick = { navigator.navigate(Screen.Search) },
-                                                onTodosClick = { navigator.navigate(Screen.Todo) },
-                                                onProfileClick = { navigator.navigate(Screen.Profile) }
-                                            )
-                                        } else if (currentScreen !is Screen.Search && currentScreen !is Screen.DuoChat && !hideNavigation) {
-                                            DetailTopBar(
-                                                title = (currentScreen as? Screen)?.getTitle()
-                                                    ?: "GitLab",
-                                                onBackClick = { navigator.goBack() }
-                                            )
-                                        }
-                                    }
-                                ) { padding ->
-                                    Box(modifier = Modifier.padding(padding)) {
-                                        NavDisplay(
-                                            entries = navigationState.toEntries(entryProvider),
-                                            onBack = { navigator.goBack() },
-                                            sceneStrategies = remember { listOf(DialogSceneStrategy<NavKey>()) }
-                                        )
-                                    }
-                                }
-                            }
-
-                            if (hideNavigation) {
-                                content()
-                            } else {
-                                NavigationSuiteScaffold(
-                                    navigationSuiteItems = {
-                                        item(
-                                            selected = currentScreen is Screen.Projects,
-                                            onClick = { navigator.navigate(Screen.Projects) },
-                                            icon = { Icon(Icons.Default.Folder, null) },
-                                            label = { Text("Projects") }
-                                        )
-                                        item(
-                                            selected = currentScreen is Screen.Issues,
-                                            onClick = { navigator.navigate(Screen.Issues) },
-                                            icon = { Icon(Icons.AutoMirrored.Filled.Assignment, null) },
-                                            label = { Text("Issues") }
-                                        )
-                                        item(
-                                            selected = currentScreen is Screen.MergeRequests,
-                                            onClick = { navigator.navigate(Screen.MergeRequests) },
-                                            icon = { Icon(Icons.AutoMirrored.Filled.CallMerge, null) },
-                                            label = { Text("MRs") }
-                                        )
-                                        item(
-                                            selected = currentScreen is Screen.Todo,
-                                            onClick = { navigator.navigate(Screen.Todo) },
-                                            icon = { Icon(Icons.Default.CheckCircle, null) },
-                                            label = { Text("Todos") }
-                                        )
-                                        item(
-                                            selected = currentScreen is Screen.Profile,
-                                            onClick = { navigator.navigate(Screen.Profile) },
-                                            icon = { Icon(Icons.Default.Person, null) },
-                                            label = { Text("Profile") }
-                                        )
-                                    }
-                                ) {
-                                    content()
-                                }
-                            }
                         }
 
                         is AuthState.Unauthenticated, is AuthState.Error -> {
@@ -230,6 +166,159 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+            } else {
+                LabdroidTheme(darkTheme = isDarkMode) {
+                    val authViewModel: AuthViewModel = hiltViewModel()
+                    val authState by authViewModel.authState.collectAsState()
+                    val currentUser by authViewModel.currentUser.collectAsState()
+
+                    LaunchedEffect(authState) {
+                        if (authState is AuthState.Authenticated) {
+                            settingsViewModel.toggleDarkMode(isDarkMode) // Ensure sync if needed, though state is already from store
+                            scheduleTodoWorker()
+                        } else if (authState is AuthState.Unauthenticated) {
+                            WorkManager.getInstance(this@MainActivity).cancelUniqueWork("TodoWorker")
+                        }
+                    }
+
+                    val topBarActions = remember { TopBarActions() }
+
+                    CompositionLocalProvider(LocalTopBarActions provides topBarActions) {
+                        val navigationState = rememberNavigationState(
+                            startRoute = Screen.Projects,
+                            topLevelRoutes = setOf(
+                                Screen.Projects,
+                                Screen.Issues,
+                                Screen.MergeRequests,
+                                Screen.Profile
+                            )
+                        )
+                        val navigator = remember { Navigator(navigationState) }
+
+                        val entryProvider = createAppEntryProvider(
+                            navigator = navigator,
+                            authViewModel = authViewModel,
+                            settingsViewModel = settingsViewModel
+                        )
+
+                        when (val state = authState) {
+                            is AuthState.Authenticated -> {
+                                val currentBackStack =
+                                    navigationState.backStacks[navigationState.topLevelRoute]
+                                val currentScreen =
+                                    (currentBackStack?.lastOrNull() ?: navigationState.startRoute) as Screen
+                                val isTopLevel = currentScreen.isTopLevel
+                                val hideNavigation = currentScreen.hideNavigation
+
+                                LaunchedEffect(currentScreen) {
+                                    topBarActions.topBar = null
+                                }
+
+                                val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(
+                                    rememberTopAppBarState()
+                                )
+
+                                val content = @Composable {
+                                    Scaffold(
+                                        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+                                        topBar = {
+                                            val customTopBar = topBarActions.topBar
+                                            if (customTopBar != null) {
+                                                customTopBar()
+                                            } else if (isTopLevel) {
+                                                HomeTopBar(
+                                                    user = currentUser,
+                                                    title = (currentScreen as? Screen)?.getTitle()
+                                                        ?: "GitLab",
+                                                    scrollBehavior = scrollBehavior,
+                                                    onSearchClick = { navigator.navigate(Screen.Search) },
+                                                    onTodosClick = { navigator.navigate(Screen.Todo) },
+                                                    onProfileClick = { navigator.navigate(Screen.Profile) }
+                                                )
+                                            } else if (currentScreen !is Screen.Search && currentScreen !is Screen.DuoChat && !hideNavigation) {
+                                                DetailTopBar(
+                                                    title = (currentScreen as? Screen)?.getTitle()
+                                                        ?: "GitLab",
+                                                    onBackClick = { navigator.goBack() }
+                                                )
+                                            }
+                                        }
+                                    ) { padding ->
+                                        Box(modifier = Modifier.padding(padding)) {
+                                            NavDisplay(
+                                                entries = navigationState.toEntries(entryProvider),
+                                                onBack = { navigator.goBack() },
+                                                sceneStrategies = remember { listOf(DialogSceneStrategy<NavKey>()) }
+                                            )
+                                        }
+                                    }
+                                }
+
+                                if (hideNavigation) {
+                                    content()
+                                } else {
+                                    NavigationSuiteScaffold(
+                                        navigationSuiteItems = {
+                                            item(
+                                                selected = currentScreen is Screen.Projects,
+                                                onClick = { navigator.navigate(Screen.Projects) },
+                                                icon = { Icon(Icons.Default.Folder, null) },
+                                                label = { Text("Projects") }
+                                            )
+                                            item(
+                                                selected = currentScreen is Screen.Issues,
+                                                onClick = { navigator.navigate(Screen.Issues) },
+                                                icon = { Icon(Icons.AutoMirrored.Filled.Assignment, null) },
+                                                label = { Text("Issues") }
+                                            )
+                                            item(
+                                                selected = currentScreen is Screen.MergeRequests,
+                                                onClick = { navigator.navigate(Screen.MergeRequests) },
+                                                icon = { Icon(Icons.AutoMirrored.Filled.CallMerge, null) },
+                                                label = { Text("MRs") }
+                                            )
+                                            item(
+                                                selected = currentScreen is Screen.Todo,
+                                                onClick = { navigator.navigate(Screen.Todo) },
+                                                icon = { Icon(Icons.Default.CheckCircle, null) },
+                                                label = { Text("Todos") }
+                                            )
+                                            item(
+                                                selected = currentScreen is Screen.Profile,
+                                                onClick = { navigator.navigate(Screen.Profile) },
+                                                icon = { Icon(Icons.Default.Person, null) },
+                                                label = { Text("Profile") }
+                                            )
+                                        }
+                                    ) {
+                                        content()
+                                    }
+                                }
+                            }
+
+                            is AuthState.Unauthenticated, is AuthState.Error -> {
+                                LoginScreen(
+                                    onLoginClick = {
+                                        val authRequest = authViewModel.getAuthorizationRequest()
+                                        val intent =
+                                            authService.getAuthorizationRequestIntent(authRequest)
+                                        authLauncher.launch(intent)
+                                    },
+                                    error = (state as? AuthState.Error)?.message
+                                )
+                            }
+
+                            is AuthState.Loading -> {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator()
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -237,6 +326,22 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         authService.dispose()
+    }
+
+    private fun scheduleTodoWorker() {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val todoWorkRequest = PeriodicWorkRequestBuilder<TodoWorker>(15, TimeUnit.MINUTES)
+            .setConstraints(constraints)
+            .build()
+
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "TodoWorker",
+            ExistingPeriodicWorkPolicy.KEEP,
+            todoWorkRequest
+        )
     }
 }
 

@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import `in`.aboobacker.labdroid.BuildConfig
 import `in`.aboobacker.labdroid.ApprovalDecision
 import `in`.aboobacker.labdroid.DuoContextItem
 import `in`.aboobacker.labdroid.GitLabWorkflowClient
@@ -100,7 +101,7 @@ class DuoChatViewModel @Inject constructor(
             return
         }
 
-        val instanceUrl = "https://gitlab.com"
+        val instanceUrl = BuildConfig.GITLAB_BASE_URL
         val headers = mapOf("Authorization" to "Bearer $token")
 
         try {

@@ -10,6 +10,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import android.content.pm.PackageManager
+import `in`.aboobacker.labdroid.ui.screens.DuoChatScreenWear
+import `in`.aboobacker.labdroid.ui.screens.TodosScreenWear
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation3.runtime.entryProvider
 import `in`.aboobacker.labdroid.ui.screens.CommitDetailScreen
@@ -259,26 +263,30 @@ fun createAppEntryProvider(
         }
         entry<Screen.Todo> {
             val todoViewModel: TodoViewModel = hiltViewModel()
-            TodosScreen(
-                viewModel = todoViewModel,
-                onTodoClick = { projectId, iid, type ->
-                    when (type) {
-                        "Issue" -> navigator.navigate(
-                            Screen.IssueDetail(
-                                projectId,
-                                iid
-                            )
-                        )
+            val context = LocalContext.current
+            val isWatch = context.packageManager.hasSystemFeature(PackageManager.FEATURE_WATCH)
 
-                        "MergeRequest" -> navigator.navigate(
-                            Screen.MergeRequestDetail(
-                                projectId,
-                                iid
-                            )
-                        )
+            if (isWatch) {
+                TodosScreenWear(
+                    viewModel = todoViewModel,
+                    onTodoClick = { projectId, iid, type ->
+                        when (type) {
+                            "Issue" -> navigator.navigate(Screen.IssueDetail(projectId, iid))
+                            "MergeRequest" -> navigator.navigate(Screen.MergeRequestDetail(projectId, iid))
+                        }
                     }
-                }
-            )
+                )
+            } else {
+                TodosScreen(
+                    viewModel = todoViewModel,
+                    onTodoClick = { projectId, iid, type ->
+                        when (type) {
+                            "Issue" -> navigator.navigate(Screen.IssueDetail(projectId, iid))
+                            "MergeRequest" -> navigator.navigate(Screen.MergeRequestDetail(projectId, iid))
+                        }
+                    }
+                )
+            }
         }
         entry<Screen.Issues> {
             val issueViewModel: IssueViewModel = hiltViewModel()
@@ -490,13 +498,25 @@ fun createAppEntryProvider(
             )
         }
         entry<Screen.DuoChat> { key ->
-            DuoChatScreen(
-                projectId = key.projectId,
-                rootNamespaceId = key.rootNamespaceId,
-                initialGoal = key.initialGoal,
-                additionalContext = key.additionalContext,
-                onBackClick = { navigator.goBack() }
-            )
+            val context = LocalContext.current
+            val isWatch = context.packageManager.hasSystemFeature(PackageManager.FEATURE_WATCH)
+
+            if (isWatch) {
+                DuoChatScreenWear(
+                    projectId = key.projectId,
+                    rootNamespaceId = key.rootNamespaceId,
+                    initialGoal = key.initialGoal,
+                    additionalContext = key.additionalContext
+                )
+            } else {
+                DuoChatScreen(
+                    projectId = key.projectId,
+                    rootNamespaceId = key.rootNamespaceId,
+                    initialGoal = key.initialGoal,
+                    additionalContext = key.additionalContext,
+                    onBackClick = { navigator.goBack() }
+                )
+            }
         }
         entry<Screen.Profile> {
             val profileViewModel: ProfileViewModel = hiltViewModel()

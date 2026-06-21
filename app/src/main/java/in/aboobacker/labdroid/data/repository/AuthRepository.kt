@@ -37,7 +37,7 @@ class AuthRepository @Inject constructor(
             }
 
             AuthorizationServiceConfiguration.fetchFromIssuer(
-                "https://gitlab.com".toUri()
+                BuildConfig.GITLAB_BASE_URL.toUri()
             ) { config, ex ->
                 if (config != null) {
                     serviceConfig = config
@@ -45,8 +45,8 @@ class AuthRepository @Inject constructor(
                 } else {
                     Log.w(TAG, "Failed to fetch discovery document, using fallback", ex)
                     val fallback = AuthorizationServiceConfiguration(
-                        "https://gitlab.com/oauth/authorize".toUri(),
-                        "https://gitlab.com/oauth/token".toUri()
+                        "${BuildConfig.GITLAB_BASE_URL}/oauth/authorize".toUri(),
+                        "${BuildConfig.GITLAB_BASE_URL}/oauth/token".toUri()
                     )
                     continuation.resume(fallback)
                 }
@@ -57,8 +57,8 @@ class AuthRepository @Inject constructor(
         // We use a simplified version here because this is called synchronously for the intent
         // In a real app, you might want to fetch config before showing login
         val fallbackConfig = AuthorizationServiceConfiguration(
-            "https://gitlab.com/oauth/authorize".toUri(),
-            "https://gitlab.com/oauth/token".toUri()
+            "${BuildConfig.GITLAB_BASE_URL}/oauth/authorize".toUri(),
+            "${BuildConfig.GITLAB_BASE_URL}/oauth/token".toUri()
         )
         return AuthorizationRequest.Builder(
             serviceConfig ?: fallbackConfig,

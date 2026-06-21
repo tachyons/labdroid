@@ -1,6 +1,7 @@
 package `in`.aboobacker.labdroid.di
 
 import android.util.Log
+import androidx.core.net.toUri
 import coil3.ImageLoader
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.svg.SvgDecoder
@@ -66,7 +67,8 @@ object NetworkModule {
                 val request = chain.request()
                 val token = authPreferences.getAccessToken()
                 val host = request.url.host
-                val isGitLab = host == "gitlab.com" || host.endsWith(".gitlab.com")
+                val gitLabHost = BuildConfig.GITLAB_BASE_URL.toUri().host
+                val isGitLab = host == gitLabHost || (gitLabHost != null && host.endsWith(".$gitLabHost"))
 
                 val authenticatedRequest = if (token != null && isGitLab) {
                     request.newBuilder()
@@ -120,7 +122,8 @@ object NetworkModule {
                 val request = chain.request()
                 val token = authPreferences.getAccessToken()
                 val host = request.url.host
-                val isGitLab = host == "gitlab.com" || host.endsWith(".gitlab.com")
+                val gitLabHost = BuildConfig.GITLAB_BASE_URL.toUri().host
+                val isGitLab = host == gitLabHost || (gitLabHost != null && host.endsWith(".$gitLabHost"))
 
                 if (token != null && isGitLab && request.header("Authorization") == null) {
                     val authenticatedRequest = request.newBuilder()
@@ -139,7 +142,7 @@ object NetworkModule {
     @Singleton
     fun provideRetrofit(okHttpClient: OkHttpClient, json: Json): Retrofit {
         return Retrofit.Builder()
-            .baseUrl("https://gitlab.com/api/v4/")
+            .baseUrl("${BuildConfig.GITLAB_BASE_URL}/api/v4/")
             .client(okHttpClient)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
@@ -155,7 +158,7 @@ object NetworkModule {
     @Singleton
     fun provideApolloClient(okHttpClient: OkHttpClient): ApolloClient {
         return ApolloClient.Builder()
-            .serverUrl("https://gitlab.com/api/graphql")
+            .serverUrl("${BuildConfig.GITLAB_BASE_URL}/api/graphql")
             .okHttpClient(okHttpClient)
             .build()
     }

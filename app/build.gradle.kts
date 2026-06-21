@@ -22,6 +22,7 @@ android {
         manifestPlaceholders["appAuthRedirectScheme"] = "in.aboobacker.labdroid"
 
         buildConfigField("String", "GITLAB_CLIENT_ID", "\"${project.findProperty("GITLAB_CLIENT_ID") ?: ""}\"")
+        buildConfigField("String", "GITLAB_BASE_URL", "\"${project.findProperty("GITLAB_BASE_URL") ?: "https://gitlab.com"}\"")
     }
 
     buildTypes {
@@ -48,7 +49,7 @@ apollo {
     service("service") {
         packageName.set("in.aboobacker.labdroid")
         introspection {
-            endpointUrl.set("https://gitlab.com/api/graphql")
+            endpointUrl.set("${project.findProperty("GITLAB_BASE_URL") ?: "https://gitlab.com"}/api/graphql")
             schemaFile.set(file("src/main/graphql/schema.graphqls"))
         }
     }
@@ -78,6 +79,8 @@ dependencies {
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.lifecycle.viewmodel.navigation3)
     implementation(libs.androidx.hilt.navigation.compose)
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.hilt.work.compiler)
     implementation(libs.coil.compose)
     implementation(libs.coil.svg)
     implementation(libs.coil.network.okhttp)
@@ -88,6 +91,13 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.apollo.runtime)
     implementation(libs.markdown)
+
+    // Wear OS
+    implementation(libs.androidx.wear.compose.material3)
+    implementation(libs.androidx.wear.compose.foundation)
+    implementation(libs.androidx.wear.compose.navigation)
+    implementation(libs.androidx.work.runtime)
+    debugImplementation(libs.androidx.wear.compose.ui.tooling)
 
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))

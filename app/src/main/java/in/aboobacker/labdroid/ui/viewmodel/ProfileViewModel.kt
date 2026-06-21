@@ -3,6 +3,7 @@ package `in`.aboobacker.labdroid.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import `in`.aboobacker.labdroid.BuildConfig
 import `in`.aboobacker.labdroid.data.model.Event
 import `in`.aboobacker.labdroid.data.model.Project
 import `in`.aboobacker.labdroid.data.model.User
@@ -131,7 +132,7 @@ class ProfileViewModel @Inject constructor(
                 launch {
                     try {
                         val calendar =
-                            api.getContributionCalendar("https://gitlab.com/users/${user.username}/calendar.json")
+                            api.getContributionCalendar("${BuildConfig.GITLAB_BASE_URL}/users/${user.username}/calendar.json")
                         val currentState = _uiState.value
                         if (currentState is ProfileUiState.Success) {
                             _uiState.value = currentState.copy(

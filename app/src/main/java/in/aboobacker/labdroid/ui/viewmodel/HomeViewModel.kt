@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import `in`.aboobacker.labdroid.BuildConfig
 import `in`.aboobacker.labdroid.data.model.Event
 import `in`.aboobacker.labdroid.data.model.User
 import `in`.aboobacker.labdroid.data.remote.GitLabApi
@@ -70,7 +71,7 @@ class HomeViewModel @Inject constructor(
                             name = currentUser.name,
                             username = currentUser.username,
                             avatarUrl = if (currentUser.avatarUrl?.startsWith("/") == true) {
-                                "https://gitlab.com${currentUser.avatarUrl}"
+                                "${BuildConfig.GITLAB_BASE_URL}${currentUser.avatarUrl}"
                             } else {
                                 currentUser.avatarUrl
                             }

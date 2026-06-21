@@ -58,9 +58,10 @@ import org.intellij.markdown.ast.ASTNode
 import org.intellij.markdown.ast.getTextInNode
 import org.intellij.markdown.flavours.gfm.GFMElementTypes
 import org.intellij.markdown.flavours.gfm.GFMFlavourDescriptor
+import `in`.aboobacker.labdroid.BuildConfig
 import org.intellij.markdown.parser.MarkdownParser
 
-val LocalMarkdownBaseUrl = staticCompositionLocalOf { "https://gitlab.com" }
+val LocalMarkdownBaseUrl = staticCompositionLocalOf { BuildConfig.GITLAB_BASE_URL }
 
 @Composable
 fun MarkdownText(
