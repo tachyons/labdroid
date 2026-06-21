@@ -2,45 +2,56 @@ package `in`.aboobacker.labdroid.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import dagger.hilt.android.lifecycle.HiltViewModel
 import `in`.aboobacker.labdroid.data.model.Group
+import `in`.aboobacker.labdroid.data.paging.GitLabPagingSource
+import `in`.aboobacker.labdroid.data.remote.GitLabApi
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.flatMapLatest
 import javax.inject.Inject
 
+data class GroupListParams(
+    val search: String? = null,
+    val ownedOnly: Boolean? = null,
+    val allAvailable: Boolean? = false
+)
+
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class GroupViewModel @Inject constructor(
-    private val repository: `in`.aboobacker.labdroid.data.repository.GroupRepository
+    private val api: GitLabApi
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow<GroupUiState>(GroupUiState.Loading)
-    val uiState: StateFlow<GroupUiState> = _uiState.asStateFlow()
+    private val paramsFlow = MutableStateFlow(GroupListParams())
 
-    init {
-        fetchGroups()
-    }
+    val groups: Flow<PagingData<Group>> = paramsFlow.flatMapLatest { params ->
+        Pager(
+            config = PagingConfig(pageSize = 20),
+            pagingSourceFactory = {
+                GitLabPagingSource { page, perPage ->
+                    api.getGroups(
+                        search = params.search,
+                        owned = params.ownedOnly,
+                        allAvailable = params.allAvailable,
+                        page = page,
+                        perPage = perPage
+                    )
+                }
+            }
+        ).flow
+    }.cachedIn(viewModelScope)
 
     fun fetchGroups(
         search: String? = null,
         ownedOnly: Boolean? = null,
         allAvailable: Boolean? = false
     ) {
-        viewModelScope.launch {
-            _uiState.value = GroupUiState.Loading
-            try {
-                val groups = repository.getGroups(search, ownedOnly, allAvailable)
-                _uiState.value = GroupUiState.Success(groups)
-            } catch (e: Exception) {
-                _uiState.value = GroupUiState.Error(e.message ?: "Unknown error")
-            }
-        }
+        paramsFlow.value = GroupListParams(search, ownedOnly, allAvailable)
     }
-}
-
-sealed interface GroupUiState {
-    object Loading : GroupUiState
-    data class Success(val groups: List<Group>) : GroupUiState
-    data class Error(val message: String) : GroupUiState
 }

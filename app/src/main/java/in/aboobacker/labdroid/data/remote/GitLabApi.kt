@@ -312,6 +312,9 @@ interface GitLabApi {
 
     @GET("groups")
     suspend fun getGroups(
+        @Query("search") search: String? = null,
+        @Query("owned") owned: Boolean? = null,
+        @Query("all_available") allAvailable: Boolean? = null,
         @Query("min_access_level") minAccessLevel: Int = 10,
         @Query("statistics") statistics: Boolean = true,
         @Query("per_page") perPage: Int = 20,

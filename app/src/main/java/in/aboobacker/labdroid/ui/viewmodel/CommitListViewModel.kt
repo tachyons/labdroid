@@ -2,38 +2,44 @@ package `in`.aboobacker.labdroid.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import dagger.hilt.android.lifecycle.HiltViewModel
 import `in`.aboobacker.labdroid.data.model.Commit
+import `in`.aboobacker.labdroid.data.paging.GitLabPagingSource
 import `in`.aboobacker.labdroid.data.remote.GitLabApi
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.flatMapLatest
 import javax.inject.Inject
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class CommitListViewModel @Inject constructor(
     private val api: GitLabApi,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow<CommitListUiState>(CommitListUiState.Loading)
-    val uiState: StateFlow<CommitListUiState> = _uiState.asStateFlow()
+    private val paramsFlow = MutableStateFlow<Pair<Long, String?>?>(null)
+
+    val commits: Flow<PagingData<Commit>> = paramsFlow.flatMapLatest { params ->
+        Pager(
+            config = PagingConfig(pageSize = 20),
+            pagingSourceFactory = {
+                GitLabPagingSource { page, perPage ->
+                    if (params != null) {
+                        api.getCommits(params.first, params.second, page = page, perPage = perPage)
+                    } else {
+                        emptyList()
+                    }
+                }
+            }
+        ).flow
+    }.cachedIn(viewModelScope)
 
     fun fetchCommits(projectId: Long, ref: String? = null) {
-        viewModelScope.launch {
-            _uiState.value = CommitListUiState.Loading
-            try {
-                val commits = api.getCommits(projectId, ref)
-                _uiState.value = CommitListUiState.Success(commits)
-            } catch (e: Exception) {
-                _uiState.value = CommitListUiState.Error(e.message ?: "Unknown error")
-            }
-        }
+        paramsFlow.value = projectId to ref
     }
-}
-
-sealed interface CommitListUiState {
-    object Loading : CommitListUiState
-    data class Success(val commits: List<Commit>) : CommitListUiState
-    data class Error(val message: String) : CommitListUiState
 }

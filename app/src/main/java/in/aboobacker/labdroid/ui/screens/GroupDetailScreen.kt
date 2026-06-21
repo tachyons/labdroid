@@ -45,7 +45,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SecondaryScrollableTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
@@ -74,6 +73,10 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.paging.LoadState
+import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.compose.itemKey
 import coil3.compose.AsyncImage
 import `in`.aboobacker.labdroid.data.model.Group
 import `in`.aboobacker.labdroid.data.model.GroupDetail
@@ -102,6 +105,9 @@ fun GroupDetailScreen(
     onBackClick: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val subgroups = viewModel.subgroups.collectAsLazyPagingItems()
+    val members = viewModel.members.collectAsLazyPagingItems()
+
     val topBarActions = LocalTopBarActions.current
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
@@ -181,11 +187,12 @@ fun GroupDetailScreen(
             is GroupDetailUiState.Success -> {
                 GroupDetailContent(
                     state = state,
+                    subgroups = subgroups,
+                    members = members,
                     onProjectClick = onProjectClick,
                     onSubgroupClick = onSubgroupClick,
                     onIssueClick = onIssueClick,
                     onMRClick = onMRClick,
-                    viewModel = viewModel
                 )
             }
 
@@ -205,11 +212,12 @@ fun GroupDetailScreen(
 @Composable
 fun GroupDetailContent(
     state: GroupDetailUiState.Success,
+    subgroups: LazyPagingItems<Group>,
+    members: LazyPagingItems<GroupMember>,
     onProjectClick: (Project) -> Unit,
     onSubgroupClick: (Long) -> Unit,
     onIssueClick: (Long, Long) -> Unit,
     onMRClick: (Long, Long) -> Unit,
-    viewModel: GroupDetailViewModel
 ) {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val tabs = listOf(
@@ -223,9 +231,9 @@ fun GroupDetailContent(
     Column(modifier = Modifier.fillMaxSize()) {
         GroupHeader(
             state.group,
-            state.members.size,
+            members.itemCount,
             state.projects.size,
-            state.subgroups.size,
+            subgroups.itemCount,
             onParentClick = onSubgroupClick
         )
 
@@ -269,6 +277,8 @@ fun GroupDetailContent(
         when (selectedTabIndex) {
             0 -> GroupOverview(
                 state,
+                subgroups,
+                members,
                 onProjectClick,
                 onSubgroupClick,
                 onViewAllSubgroups = { selectedTabIndex = 1 },
@@ -276,18 +286,12 @@ fun GroupDetailContent(
             )
 
             1 -> GroupSubgroupsTab(
-                subgroups = state.subgroups,
+                subgroups = subgroups,
                 onSubgroupClick = onSubgroupClick,
-                isLoading = state.isLoadingSubgroups,
-                hasMore = state.hasMoreSubgroups,
-                onLoadMore = { viewModel.loadMoreSubgroups() }
             )
 
             2 -> GroupMembersTab(
-                members = state.members,
-                isLoading = state.isLoadingMembers,
-                hasMore = state.hasMoreMembers,
-                onLoadMore = { viewModel.loadMoreMembers() }
+                members = members,
             )
 
             3 -> GroupIssues(state.issues, state.isLoadingIssues, onIssueClick)
@@ -393,6 +397,8 @@ fun HeaderStat(icon: androidx.compose.ui.graphics.vector.ImageVector, label: Str
 @Composable
 fun GroupOverview(
     state: GroupDetailUiState.Success,
+    subgroups: LazyPagingItems<Group>,
+    members: LazyPagingItems<GroupMember>,
     onProjectClick: (Project) -> Unit,
     onSubgroupClick: (Long) -> Unit,
     onViewAllSubgroups: () -> Unit,
@@ -406,11 +412,14 @@ fun GroupOverview(
         item {
             SectionTitle(title = "Subgroups", onActionClick = onViewAllSubgroups)
         }
-        if (state.isLoadingSubgroups && state.subgroups.isEmpty()) {
+        if (subgroups.loadState.refresh is LoadState.Loading && subgroups.itemCount == 0) {
             item { SectionLoadingIndicator() }
-        } else if (state.subgroups.isNotEmpty()) {
-            items(state.subgroups.take(3)) { subgroup ->
-                SubgroupCard(subgroup, onClick = { onSubgroupClick(subgroup.id) })
+        } else if (subgroups.itemCount > 0) {
+            items(minOf(subgroups.itemCount, 3)) { index ->
+                val subgroup = subgroups[index]
+                if (subgroup != null) {
+                    SubgroupCard(subgroup, onClick = { onSubgroupClick(subgroup.id) })
+                }
             }
         } else {
             item { SectionEmptyText("No subgroups") }
@@ -436,9 +445,9 @@ fun GroupOverview(
                 onActionClick = onManageMembers
             )
         }
-        if (state.isLoadingMembers && state.members.isEmpty()) {
+        if (members.loadState.refresh is LoadState.Loading && members.itemCount == 0) {
             item { SectionLoadingIndicator() }
-        } else if (state.members.isNotEmpty()) {
+        } else if (members.itemCount > 0) {
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -450,12 +459,15 @@ fun GroupOverview(
                     colors = CardDefaults.cardColors(containerColor = Color.White)
                 ) {
                     Column {
-                        state.members.take(3).forEach { member ->
-                            MemberItem(member)
-                            HorizontalDivider(
-                                modifier = Modifier.padding(horizontal = 16.dp),
-                                color = Color.LightGray.copy(alpha = 0.2f)
-                            )
+                        repeat(minOf(members.itemCount, 3)) { index ->
+                            val member = members[index]
+                            if (member != null) {
+                                MemberItem(member)
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                    color = Color.LightGray.copy(alpha = 0.2f)
+                                )
+                            }
                         }
                     }
                 }
@@ -762,13 +774,10 @@ fun GroupMergeRequests(
 
 @Composable
 fun GroupSubgroupsTab(
-    subgroups: List<Group>,
+    subgroups: LazyPagingItems<Group>,
     onSubgroupClick: (Long) -> Unit,
-    isLoading: Boolean,
-    onLoadMore: () -> Unit,
-    hasMore: Boolean
 ) {
-    if (isLoading && subgroups.isEmpty()) {
+    if (subgroups.loadState.refresh is LoadState.Loading && subgroups.itemCount == 0) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
@@ -778,22 +787,29 @@ fun GroupSubgroupsTab(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            items(subgroups) { subgroup ->
-                SubgroupCard(subgroup, onClick = { onSubgroupClick(subgroup.id) })
+            items(
+                count = subgroups.itemCount,
+                key = subgroups.itemKey { it.id }
+            ) { index ->
+                val subgroup = subgroups[index]
+                if (subgroup != null) {
+                    SubgroupCard(subgroup, onClick = { onSubgroupClick(subgroup.id) })
+                }
             }
-            if (subgroups.isEmpty()) {
+            if (subgroups.itemCount == 0 && subgroups.loadState.refresh is LoadState.NotLoading) {
                 item {
                     SectionEmptyText("No subgroups found")
                 }
             }
-            if (hasMore) {
+            if (subgroups.loadState.append is LoadState.Loading) {
                 item {
-                    OutlinedButton(
-                        onClick = onLoadMore,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text("Load More Subgroups")
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
                     }
                 }
             }
@@ -803,12 +819,9 @@ fun GroupSubgroupsTab(
 
 @Composable
 fun GroupMembersTab(
-    members: List<GroupMember>,
-    isLoading: Boolean,
-    onLoadMore: () -> Unit,
-    hasMore: Boolean
+    members: LazyPagingItems<GroupMember>,
 ) {
-    if (isLoading && members.isEmpty()) {
+    if (members.loadState.refresh is LoadState.Loading && members.itemCount == 0) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
@@ -818,32 +831,39 @@ fun GroupMembersTab(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(members) { member ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    border = androidx.compose.foundation.BorderStroke(
-                        1.dp,
-                        Color.LightGray.copy(alpha = 0.3f)
-                    )
-                ) {
-                    MemberItem(member)
+            items(
+                count = members.itemCount,
+                key = members.itemKey { it.id }
+            ) { index ->
+                val member = members[index]
+                if (member != null) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            Color.LightGray.copy(alpha = 0.3f)
+                        )
+                    ) {
+                        MemberItem(member)
+                    }
                 }
             }
-            if (members.isEmpty()) {
+            if (members.itemCount == 0 && members.loadState.refresh is LoadState.NotLoading) {
                 item {
                     SectionEmptyText("No members found")
                 }
             }
-            if (hasMore) {
+            if (members.loadState.append is LoadState.Loading) {
                 item {
-                    OutlinedButton(
-                        onClick = onLoadMore,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text("Load More Members")
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
                     }
                 }
             }

@@ -48,6 +48,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.paging.LoadState
+import androidx.paging.compose.collectAsLazyPagingItems
 import coil3.compose.AsyncImage
 import `in`.aboobacker.labdroid.R
 import `in`.aboobacker.labdroid.data.model.Permissions
@@ -58,6 +60,7 @@ import `in`.aboobacker.labdroid.data.model.ProjectAccess
 import `in`.aboobacker.labdroid.data.model.User
 import `in`.aboobacker.labdroid.data.model.UserPermissions
 import `in`.aboobacker.labdroid.ui.components.GroupList
+import `in`.aboobacker.labdroid.ui.components.GroupListPaging
 import `in`.aboobacker.labdroid.ui.components.SkeletonLoader
 import `in`.aboobacker.labdroid.ui.components.StatusBadge
 import `in`.aboobacker.labdroid.ui.components.formatTimeAgo
@@ -170,32 +173,33 @@ fun ProjectListScreenContent(
 fun GroupsTabContent(onGroupClick: (Long) -> Unit, onRefresh: () -> Unit = {}) {
     val groupViewModel: `in`.aboobacker.labdroid.ui.viewmodel.GroupViewModel =
         androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel()
-    val groupUiState by groupViewModel.uiState.collectAsStateWithLifecycle()
+    val groups = groupViewModel.groups.collectAsLazyPagingItems()
 
     PullToRefreshBox(
-        isRefreshing = groupUiState is `in`.aboobacker.labdroid.ui.viewmodel.GroupUiState.Loading,
+        isRefreshing = groups.loadState.refresh is LoadState.Loading && groups.itemCount > 0,
         onRefresh = {
             onRefresh()
-            groupViewModel.fetchGroups()
+            groups.refresh()
         },
         modifier = Modifier.fillMaxSize()
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            when (val state = groupUiState) {
-                is `in`.aboobacker.labdroid.ui.viewmodel.GroupUiState.Loading -> {
+            when {
+                groups.loadState.refresh is LoadState.Loading && groups.itemCount == 0 -> {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
 
-                is `in`.aboobacker.labdroid.ui.viewmodel.GroupUiState.Success -> {
-                    GroupList(state.groups, onGroupClick = onGroupClick)
-                }
-
-                is `in`.aboobacker.labdroid.ui.viewmodel.GroupUiState.Error -> {
+                groups.loadState.refresh is LoadState.Error && groups.itemCount == 0 -> {
+                    val error = groups.loadState.refresh as LoadState.Error
                     Text(
-                        state.message,
+                        error.error.message ?: "Unknown error",
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.align(Alignment.Center)
                     )
+                }
+
+                else -> {
+                    GroupListPaging(groups, onGroupClick = onGroupClick)
                 }
             }
         }

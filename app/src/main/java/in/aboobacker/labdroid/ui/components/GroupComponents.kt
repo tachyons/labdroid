@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.itemKey
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Lock
@@ -39,6 +41,28 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import `in`.aboobacker.labdroid.data.model.Group
+
+@Composable
+fun GroupListPaging(
+    groups: LazyPagingItems<Group>,
+    onGroupClick: (Long) -> Unit = {}
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        items(
+            count = groups.itemCount,
+            key = groups.itemKey { it.id }
+        ) { index ->
+            val group = groups[index]
+            if (group != null) {
+                GroupCard(group) { onGroupClick(group.id) }
+            }
+        }
+    }
+}
 
 @Composable
 fun GroupList(groups: List<Group>, onGroupClick: (Long) -> Unit = {}) {

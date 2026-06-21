@@ -8,19 +8,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.paging.LoadState
+import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.compose.itemKey
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import `in`.aboobacker.labdroid.ui.components.PipelineItem
-import `in`.aboobacker.labdroid.ui.viewmodel.PipelinesUiState
 import `in`.aboobacker.labdroid.ui.viewmodel.PipelinesViewModel
 
 @Composable
@@ -29,37 +28,49 @@ fun PipelinesScreen(
     viewModel: PipelinesViewModel,
     onPipelineClick: (Long, Long) -> Unit
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val pipelines = viewModel.pipelines.collectAsLazyPagingItems()
 
     LaunchedEffect(projectId) {
         viewModel.fetchPipelines(projectId)
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        when (val state = uiState) {
-            is PipelinesUiState.Loading -> {
+        when {
+            pipelines.loadState.refresh is LoadState.Loading -> {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             }
 
-            is PipelinesUiState.Success -> {
+            pipelines.loadState.refresh is LoadState.Error -> {
+                val error = pipelines.loadState.refresh as LoadState.Error
+                Text(
+                    text = error.error.message ?: "Unknown error",
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(16.dp),
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+
+            else -> {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(state.pipelines) { pipeline ->
-                        PipelineItem(
-                            pipeline,
-                            onClick = { onPipelineClick(projectId, pipeline.id) })
-
-                        LaunchedEffect(pipeline.id) {
-                            if (pipeline == state.pipelines.last()) {
-                                viewModel.loadMore()
-                            }
+                    items(
+                        count = pipelines.itemCount,
+                        key = pipelines.itemKey { it.id }
+                    ) { index ->
+                        val pipeline = pipelines[index]
+                        if (pipeline != null) {
+                            PipelineItem(
+                                pipeline,
+                                onClick = { onPipelineClick(projectId, pipeline.id) }
+                            )
                         }
                     }
 
-                    if (state.isLoadingMore) {
+                    if (pipelines.loadState.append is LoadState.Loading) {
                         item {
                             Box(
                                 modifier = Modifier
@@ -72,16 +83,6 @@ fun PipelinesScreen(
                         }
                     }
                 }
-            }
-
-            is PipelinesUiState.Error -> {
-                Text(
-                    text = state.message,
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .padding(16.dp),
-                    color = MaterialTheme.colorScheme.error
-                )
             }
         }
     }

@@ -2,6 +2,10 @@ package `in`.aboobacker.labdroid.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import dagger.hilt.android.lifecycle.HiltViewModel
 import `in`.aboobacker.labdroid.data.model.Group
 import `in`.aboobacker.labdroid.data.model.GroupDetail
@@ -9,14 +13,19 @@ import `in`.aboobacker.labdroid.data.model.GroupMember
 import `in`.aboobacker.labdroid.data.model.Issue
 import `in`.aboobacker.labdroid.data.model.MergeRequest
 import `in`.aboobacker.labdroid.data.model.Project
+import `in`.aboobacker.labdroid.data.paging.GitLabPagingSource
 import `in`.aboobacker.labdroid.data.repository.GroupRepository
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class GroupDetailViewModel @Inject constructor(
     private val repository: GroupRepository,
@@ -25,15 +34,41 @@ class GroupDetailViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<GroupDetailUiState>(GroupDetailUiState.Loading)
     val uiState: StateFlow<GroupDetailUiState> = _uiState.asStateFlow()
 
-    private var currentGroupId: Long? = null
-    private var subgroupPage = 1
-    private var memberPage = 1
+    private val groupIdFlow = MutableStateFlow<Long?>(null)
+
+    val subgroups: Flow<PagingData<Group>> = groupIdFlow.flatMapLatest { groupId ->
+        Pager(
+            config = PagingConfig(pageSize = 10),
+            pagingSourceFactory = {
+                GitLabPagingSource { page, perPage ->
+                    if (groupId != null) {
+                        repository.getSubgroups(groupId, page = page)
+                    } else {
+                        emptyList()
+                    }
+                }
+            }
+        ).flow
+    }.cachedIn(viewModelScope)
+
+    val members: Flow<PagingData<GroupMember>> = groupIdFlow.flatMapLatest { groupId ->
+        Pager(
+            config = PagingConfig(pageSize = 10),
+            pagingSourceFactory = {
+                GitLabPagingSource { page, perPage ->
+                    if (groupId != null) {
+                        repository.getGroupMembers(groupId, page = page)
+                    } else {
+                        emptyList()
+                    }
+                }
+            }
+        ).flow
+    }.cachedIn(viewModelScope)
 
     fun loadGroupDetail(groupId: Long) {
-        if (currentGroupId == groupId) return
-        currentGroupId = groupId
-        subgroupPage = 1
-        memberPage = 1
+        if (groupIdFlow.value == groupId) return
+        groupIdFlow.value = groupId
 
         viewModelScope.launch {
             _uiState.value = GroupDetailUiState.Loading
@@ -41,38 +76,17 @@ class GroupDetailViewModel @Inject constructor(
                 val group = repository.getGroup(groupId)
                 _uiState.value = GroupDetailUiState.Success(
                     group = group,
-                    isLoadingSubgroups = true,
                     isLoadingProjects = true,
-                    isLoadingMembers = true,
                     isLoadingIssues = true,
                     isLoadingMergeRequests = true,
                 )
 
-                launch { fetchSubgroups(groupId) }
                 launch { fetchProjects(groupId) }
-                launch { fetchMembers(groupId) }
                 launch { fetchIssues(groupId) }
                 launch { fetchMergeRequests(groupId) }
 
             } catch (e: Exception) {
                 _uiState.value = GroupDetailUiState.Error(e.message ?: "Unknown error")
-            }
-        }
-    }
-
-    private suspend fun fetchSubgroups(groupId: Long) {
-        try {
-            val subgroups = repository.getSubgroups(groupId, subgroupPage)
-            _uiState.update { state ->
-                (state as? GroupDetailUiState.Success)?.copy(
-                    subgroups = subgroups,
-                    isLoadingSubgroups = false,
-                    hasMoreSubgroups = subgroups.size >= 10,
-                ) ?: state
-            }
-        } catch (_: Exception) {
-            _uiState.update { state ->
-                (state as? GroupDetailUiState.Success)?.copy(isLoadingSubgroups = false) ?: state
             }
         }
     }
@@ -89,23 +103,6 @@ class GroupDetailViewModel @Inject constructor(
         } catch (_: Exception) {
             _uiState.update { state ->
                 (state as? GroupDetailUiState.Success)?.copy(isLoadingProjects = false) ?: state
-            }
-        }
-    }
-
-    private suspend fun fetchMembers(groupId: Long) {
-        try {
-            val members = repository.getGroupMembers(groupId, memberPage)
-            _uiState.update { state ->
-                (state as? GroupDetailUiState.Success)?.copy(
-                    members = members,
-                    isLoadingMembers = false,
-                    hasMoreMembers = members.size >= 10,
-                ) ?: state
-            }
-        } catch (_: Exception) {
-            _uiState.update { state ->
-                (state as? GroupDetailUiState.Success)?.copy(isLoadingMembers = false) ?: state
             }
         }
     }
@@ -142,66 +139,18 @@ class GroupDetailViewModel @Inject constructor(
             }
         }
     }
-
-    fun loadMoreSubgroups() {
-        val currentState = _uiState.value
-        if ((currentState !is GroupDetailUiState.Success) || !currentState.hasMoreSubgroups) return
-        val groupId = currentGroupId ?: return
-
-        viewModelScope.launch {
-            try {
-                subgroupPage++
-                val newSubgroups = repository.getSubgroups(groupId, subgroupPage)
-                _uiState.update { state ->
-                    (state as? GroupDetailUiState.Success)?.copy(
-                        subgroups = state.subgroups + newSubgroups,
-                        hasMoreSubgroups = newSubgroups.size >= 10,
-                    ) ?: state
-                }
-            } catch (_: Exception) {
-                // Handle error
-            }
-        }
-    }
-
-    fun loadMoreMembers() {
-        val currentState = _uiState.value
-        if ((currentState !is GroupDetailUiState.Success) || !currentState.hasMoreMembers) return
-        val groupId = currentGroupId ?: return
-
-        viewModelScope.launch {
-            try {
-                memberPage++
-                val newMembers = repository.getGroupMembers(groupId, memberPage)
-                _uiState.update { state ->
-                    (state as? GroupDetailUiState.Success)?.copy(
-                        members = state.members + newMembers,
-                        hasMoreMembers = newMembers.size >= 10,
-                    ) ?: state
-                }
-            } catch (_: Exception) {
-                // Handle error
-            }
-        }
-    }
 }
 
 sealed interface GroupDetailUiState {
     object Loading : GroupDetailUiState
     data class Success(
         val group: GroupDetail,
-        val subgroups: List<Group> = emptyList(),
         val projects: List<Project> = emptyList(),
-        val members: List<GroupMember> = emptyList(),
         val issues: List<Issue> = emptyList(),
         val mergeRequests: List<MergeRequest> = emptyList(),
-        val isLoadingSubgroups: Boolean = false,
         val isLoadingProjects: Boolean = false,
-        val isLoadingMembers: Boolean = false,
         val isLoadingIssues: Boolean = false,
         val isLoadingMergeRequests: Boolean = false,
-        val hasMoreSubgroups: Boolean = false,
-        val hasMoreMembers: Boolean = false,
     ) : GroupDetailUiState
 
     data class Error(val message: String) : GroupDetailUiState
