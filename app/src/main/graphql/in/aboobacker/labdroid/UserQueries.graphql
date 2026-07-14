@@ -1,4 +1,4 @@
-query DashboardQuery {
+query ProfileQuery {
   currentUser {
     name
     username
@@ -12,10 +12,61 @@ query DashboardQuery {
     webUrl
     duoClassicChatAvailable
     duoChatAvailableFeatures
+    status {
+      emoji
+      message
+      availability
+      clearStatusAt
+    }
+    userPreferences {
+      duoDefaultNamespace {
+        id
+      }
+    }
     todos(state: pending) {
       count
     }
-    starredProjects(first: 10) {
+    starredProjects(first: 5) {
+      nodes {
+        id
+        name
+        nameWithNamespace
+        description
+        starCount
+        forksCount
+        fullPath
+        visibility
+        avatarUrl
+        lastActivityAt
+        webUrl
+      }
+    }
+  }
+}
+
+query DashboardQuery {
+  currentUser {
+    name
+    username
+    id
+    avatarUrl
+    duoClassicChatAvailable
+    duoChatAvailableFeatures
+    status {
+      emoji
+      message
+      availability
+      clearStatusAt
+    }
+    userPreferences {
+      duoDefaultNamespace {
+        id
+      }
+    }
+    todos(state: pending) {
+      count
+    }
+    starredProjects(first: 5) {
       nodes {
         id
         name
@@ -30,7 +81,6 @@ query DashboardQuery {
         webUrl
         maxAccessLevel {
           integerValue
-          stringValue
         }
         userPermissions {
           pushCode
@@ -41,13 +91,11 @@ query DashboardQuery {
           createMergeRequestIn
         }
       }
-      count
     }
-    projectMemberships(first: 10) {
+    projectMemberships(first: 5) {
       nodes {
         accessLevel {
           integerValue
-          stringValue
         }
         project {
           id
@@ -63,7 +111,6 @@ query DashboardQuery {
           webUrl
           maxAccessLevel {
             integerValue
-            stringValue
           }
           userPermissions {
             pushCode
@@ -73,26 +120,6 @@ query DashboardQuery {
             createIssue
             createMergeRequestIn
           }
-        }
-      }
-    }
-    groups(first: 10) {
-      count
-      nodes {
-        name
-        id
-        visibility
-        avatarUrl
-        groupMembersCount
-        maxAccessLevel {
-          integerValue
-          stringValue
-        }
-        userPermissions {
-          readGroup
-          createProjects
-          changeGroup
-          removeGroup
         }
       }
     }

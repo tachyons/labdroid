@@ -50,6 +50,7 @@ import androidx.core.graphics.toColorInt
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import `in`.aboobacker.labdroid.BuildConfig
 import `in`.aboobacker.labdroid.ui.theme.LabdroidTheme
 import org.intellij.markdown.IElementType
 import org.intellij.markdown.MarkdownElementTypes
@@ -58,7 +59,6 @@ import org.intellij.markdown.ast.ASTNode
 import org.intellij.markdown.ast.getTextInNode
 import org.intellij.markdown.flavours.gfm.GFMElementTypes
 import org.intellij.markdown.flavours.gfm.GFMFlavourDescriptor
-import `in`.aboobacker.labdroid.BuildConfig
 import org.intellij.markdown.parser.MarkdownParser
 
 val LocalMarkdownBaseUrl = staticCompositionLocalOf { BuildConfig.GITLAB_BASE_URL }

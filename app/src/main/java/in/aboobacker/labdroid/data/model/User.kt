@@ -32,5 +32,17 @@ data class User(
     @SerialName("duo_classic_chat_available")
     val duoClassicChatAvailable: Boolean = false,
     @SerialName("duo_chat_available_features")
-    val duoChatAvailableFeatures: List<String> = emptyList()
+    val duoChatAvailableFeatures: List<String> = emptyList(),
+    @SerialName("duo_default_namespace_id")
+    val duoDefaultNamespaceId: Long? = null,
+    val status: UserStatus? = null
+)
+
+@Serializable
+data class UserStatus(
+    val emoji: String? = null,
+    val message: String? = null,
+    val availability: String? = null,
+    @SerialName("clear_status_at")
+    val clearStatusAt: String? = null
 )

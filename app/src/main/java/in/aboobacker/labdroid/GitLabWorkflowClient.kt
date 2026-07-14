@@ -254,14 +254,25 @@ class GitLabWorkflowClient(
      *
      * @param workflowID  The same workflowID used in the original [StartRequest]
      * @param decision    Approval or rejection
+     * @param goal        The original goal of the workflow
+     * @param projectId   Optional project ID context
+     * @param rootNamespaceId Optional root namespace ID context
      */
-    fun sendApprovalDecision(workflowID: String, decision: ApprovalDecision) {
+    fun sendApprovalDecision(
+        workflowID: String,
+        decision: ApprovalDecision,
+        goal: String,
+        projectId: String? = null,
+        rootNamespaceId: String? = null
+    ) {
         send(
             ClientEvent.Start(
                 StartRequest(
                     workflowID = workflowID,
-                    goal = "",
-                    approval = decision
+                    goal = goal,
+                    approval = decision,
+                    projectId = projectId,
+                    rootNamespaceId = rootNamespaceId
                 )
             )
         )

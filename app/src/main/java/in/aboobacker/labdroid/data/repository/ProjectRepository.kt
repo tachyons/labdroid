@@ -1,7 +1,6 @@
 package `in`.aboobacker.labdroid.data.repository
 
 import com.apollographql.apollo.ApolloClient
-import `in`.aboobacker.labdroid.DashboardQuery
 import `in`.aboobacker.labdroid.ProjectsQuery
 import `in`.aboobacker.labdroid.data.local.LocalProjectCache
 import `in`.aboobacker.labdroid.data.model.MarkdownUpload
@@ -16,17 +15,14 @@ import javax.inject.Singleton
 class ProjectRepository @Inject constructor(
     private val api: GitLabApi,
     private val apolloClient: ApolloClient,
+    private val userRepository: UserRepository,
     private val localCache: LocalProjectCache
 ) {
     val recentProjects: Flow<List<Project>> = localCache.recentProjects
 
-    suspend fun getDashboardData(): DashboardQuery.Data? {
-        val response = apolloClient.query(DashboardQuery()).execute()
-        if (response.hasErrors()) {
-            throw Exception(response.errors?.firstOrNull()?.message ?: "GraphQL Error")
-        }
-        return response.data
-    }
+    suspend fun getDashboardData() = userRepository.getDashboardData()
+
+    suspend fun getProfileData() = userRepository.getProfileData()
 
     suspend fun getProjects(): List<Project> {
         val response = apolloClient.query(

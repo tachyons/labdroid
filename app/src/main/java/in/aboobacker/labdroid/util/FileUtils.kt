@@ -10,7 +10,7 @@ object FileUtils {
         val contentResolver = context.contentResolver
         val fileName = getFileName(context, uri) ?: "upload.png"
         val tempFile = File(context.cacheDir, fileName)
-        
+
         try {
             contentResolver.openInputStream(uri)?.use { inputStream ->
                 FileOutputStream(tempFile).use { outputStream ->

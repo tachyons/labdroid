@@ -10,10 +10,10 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import `in`.aboobacker.labdroid.data.model.Pipeline
 import `in`.aboobacker.labdroid.data.paging.GitLabPagingSource
 import `in`.aboobacker.labdroid.data.remote.GitLabApi
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import javax.inject.Inject
 
 @OptIn(ExperimentalCoroutinesApi::class)

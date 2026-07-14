@@ -131,7 +131,9 @@ fun MergeRequestListScreenContent(
                         colors = OutlinedTextFieldDefaults.colors(
                             unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                             focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(
+                                alpha = 0.5f
+                            )
                         ),
                         singleLine = true
                     )

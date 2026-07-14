@@ -355,13 +355,17 @@ fun ProfileHeader(user: User) {
         }
 
         // Online indicator
+        val statusColor = when (user.status?.availability) {
+            "BUSY" -> Color(0xFFFF5233)
+            else -> Color(0xFF4CAF50)
+        }
         Surface(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .offset(x = 40.dp, y = (-10).dp)
                 .size(24.dp),
             shape = CircleShape,
-            color = Color(0xFF4CAF50),
+            color = statusColor,
             border = BorderStroke(3.dp, MaterialTheme.colorScheme.surface)
         ) {}
     }
@@ -376,6 +380,24 @@ fun ProfileHeader(user: User) {
             text = user.name,
             style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
         )
+        if (user.status?.message?.isNotEmpty() == true || user.status?.emoji?.isNotEmpty() == true) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(top = 4.dp)
+            ) {
+                if (user.status.emoji?.isNotEmpty() == true) {
+                    Text(text = user.status.emoji, style = MaterialTheme.typography.bodyMedium)
+                    Spacer(modifier = Modifier.width(4.dp))
+                }
+                if (user.status.message?.isNotEmpty() == true) {
+                    Text(
+                        text = user.status.message,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
         val subtitle = if (user.jobTitle != null) {
             "${user.jobTitle} • @${user.username}"
         } else {

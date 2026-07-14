@@ -1,5 +1,6 @@
 package `in`.aboobacker.labdroid.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -12,12 +13,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MediumTopAppBar
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -30,6 +33,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -49,7 +53,8 @@ fun HomeTopBar(
     scrollBehavior: TopAppBarScrollBehavior? = null,
     onSearchClick: () -> Unit = {},
     onTodosClick: () -> Unit = {},
-    onProfileClick: () -> Unit = {}
+    onProfileClick: () -> Unit = {},
+    onDuoClick: () -> Unit = {}
 ) {
     TopAppBar(
         title = {
@@ -63,29 +68,58 @@ fun HomeTopBar(
                 modifier = Modifier
                     .padding(start = 16.dp)
                     .size(32.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .clickable(enabled = user != null, onClick = onProfileClick),
-                contentAlignment = Alignment.Center
+                    .clickable(enabled = user != null, onClick = onProfileClick)
             ) {
-                if (user != null) {
-                    AsyncImage(
-                        model = user.avatarUrl,
-                        contentDescription = stringResource(R.string.profile),
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Icon(
-                        Icons.Default.Person,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (user != null) {
+                        AsyncImage(
+                            model = user.avatarUrl,
+                            contentDescription = stringResource(R.string.profile),
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Icon(
+                            Icons.Default.Person,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                if (user?.status != null) {
+                    val statusColor = when (user.status.availability) {
+                        "BUSY" -> Color(0xFFFF5233)
+                        else -> Color(0xFF4CAF50)
+                    }
+                    Surface(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .size(10.dp),
+                        shape = CircleShape,
+                        color = statusColor,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.surface)
+                    ) {}
                 }
             }
         },
         actions = {
+            if (user?.hasDuoAccess == true) {
+                IconButton(onClick = onDuoClick) {
+                    Icon(
+                        imageVector = Icons.Default.Psychology,
+                        contentDescription = "Duo Chat",
+                        tint = Color(0xFF8E75C2)
+                    )
+                }
+            }
             IconButton(onClick = onSearchClick) {
                 Icon(Icons.Outlined.Search, contentDescription = stringResource(R.string.search))
             }

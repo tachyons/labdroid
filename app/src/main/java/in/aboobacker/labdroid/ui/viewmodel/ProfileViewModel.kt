@@ -47,13 +47,13 @@ class ProfileViewModel @Inject constructor(
             try {
                 val (user, pinnedProjects, todoCount) = coroutineScope {
                     if (userId == null && username == null) {
-                        val dashboardDataDeferred = async { projectRepository.getDashboardData() }
+                        val profileDataDeferred = async { projectRepository.getProfileData() }
                         val currentUserRestDeferred = async { api.getCurrentUser() }
 
-                        val dashboardData = dashboardDataDeferred.await()
+                        val profileData = profileDataDeferred.await()
                         val user = currentUserRestDeferred.await()
 
-                        val currentUserData = dashboardData?.currentUser
+                        val currentUserData = profileData?.currentUser
                         val updatedUser = user.copy(
                             hasDuoAccess = currentUserData?.duoClassicChatAvailable
                                 ?: user.hasDuoAccess,

@@ -1,15 +1,24 @@
 package `in`.aboobacker.labdroid.di
 
+import android.content.Context
 import android.util.Log
 import androidx.core.net.toUri
 import coil3.ImageLoader
+import coil3.disk.DiskCache
+import coil3.memory.MemoryCache
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
+import coil3.request.crossfade
 import coil3.svg.SvgDecoder
 import com.apollographql.apollo.ApolloClient
+import com.apollographql.apollo.cache.normalized.api.MemoryCacheFactory
+import com.apollographql.apollo.cache.normalized.api.NormalizedCacheFactory
+import com.apollographql.apollo.cache.normalized.normalizedCache
+import com.apollographql.apollo.cache.normalized.sql.SqlNormalizedCacheFactory
 import com.apollographql.apollo.network.okHttpClient
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import `in`.aboobacker.labdroid.BuildConfig
 import `in`.aboobacker.labdroid.GitLabWorkflowClient
@@ -18,11 +27,14 @@ import `in`.aboobacker.labdroid.data.remote.GitLabApi
 import `in`.aboobacker.labdroid.data.repository.AuthRepository
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import okhttp3.Cache
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
+import okio.Path.Companion.toPath
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
+import java.io.File
 import java.util.concurrent.TimeUnit
 import javax.inject.Provider
 import javax.inject.Singleton
@@ -48,6 +60,7 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideOkHttpClient(
+        @ApplicationContext context: Context,
         authPreferences: AuthPreferences,
         authRepositoryProvider: Provider<AuthRepository>
     ): OkHttpClient {
@@ -59,7 +72,11 @@ object NetworkModule {
             }
         }
 
+        val cacheSize = 50L * 1024L * 1024L // 50MB
+        val cache = Cache(File(context.cacheDir, "http_cache"), cacheSize)
+
         return OkHttpClient.Builder()
+            .cache(cache)
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
@@ -68,7 +85,8 @@ object NetworkModule {
                 val token = authPreferences.getAccessToken()
                 val host = request.url.host
                 val gitLabHost = BuildConfig.GITLAB_BASE_URL.toUri().host
-                val isGitLab = host == gitLabHost || (gitLabHost != null && host.endsWith(".$gitLabHost"))
+                val isGitLab =
+                    host == gitLabHost || (gitLabHost != null && host.endsWith(".$gitLabHost"))
 
                 val authenticatedRequest = if (token != null && isGitLab) {
                     request.newBuilder()
@@ -123,7 +141,8 @@ object NetworkModule {
                 val token = authPreferences.getAccessToken()
                 val host = request.url.host
                 val gitLabHost = BuildConfig.GITLAB_BASE_URL.toUri().host
-                val isGitLab = host == gitLabHost || (gitLabHost != null && host.endsWith(".$gitLabHost"))
+                val isGitLab =
+                    host == gitLabHost || (gitLabHost != null && host.endsWith(".$gitLabHost"))
 
                 if (token != null && isGitLab && request.header("Authorization") == null) {
                     val authenticatedRequest = request.newBuilder()
@@ -156,24 +175,50 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideApolloClient(okHttpClient: OkHttpClient): ApolloClient {
+    fun provideNormalizedCacheFactory(
+        @ApplicationContext context: Context
+    ): NormalizedCacheFactory {
+        val memoryCacheFactory = MemoryCacheFactory(maxSizeBytes = 10 * 1024 * 1024)
+        val sqlCacheFactory = SqlNormalizedCacheFactory(context, "apollo.db")
+        return memoryCacheFactory.chain(sqlCacheFactory)
+    }
+
+    @Provides
+    @Singleton
+    fun provideApolloClient(
+        okHttpClient: OkHttpClient,
+        cacheFactory: NormalizedCacheFactory
+    ): ApolloClient {
         return ApolloClient.Builder()
             .serverUrl("${BuildConfig.GITLAB_BASE_URL}/api/graphql")
             .okHttpClient(okHttpClient)
+            .normalizedCache(cacheFactory)
             .build()
     }
 
     @Provides
     @Singleton
     fun provideImageLoader(
-        @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
+        @ApplicationContext context: Context,
         okHttpClient: OkHttpClient
     ): ImageLoader {
         return ImageLoader.Builder(context)
+            .memoryCache {
+                MemoryCache.Builder()
+                    .maxSizePercent(context, 0.25)
+                    .build()
+            }
+            .diskCache {
+                DiskCache.Builder()
+                    .directory(context.cacheDir.resolve("image_cache").absolutePath.toPath())
+                    .maxSizeBytes(100L * 1024L * 1024L) // 100MB
+                    .build()
+            }
             .components {
                 add(OkHttpNetworkFetcherFactory(okHttpClient))
                 add(SvgDecoder.Factory())
             }
+            .crossfade(true)
             .build()
     }
 }

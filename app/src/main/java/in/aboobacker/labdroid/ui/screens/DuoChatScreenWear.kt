@@ -102,10 +102,10 @@ fun DuoChatContentWear(
         scrollState = listState,
         edgeButton = {
             EdgeButton(
-                onClick = { 
+                onClick = {
                     coroutineScope.launch {
                         // Scroll to the input field and request focus
-                        listState.scrollToItem(messages.size + 5) 
+                        listState.scrollToItem(messages.size + 5)
                         focusRequester.requestFocus()
                         keyboardController?.show()
                     }
@@ -208,12 +208,14 @@ fun DuoChatContentWear(
             item {
                 ChildButton(
                     onClick = onClearChat,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
                 ) {
                     Text("Clear Chat")
                 }
             }
-            
+
             item {
                 Spacer(modifier = Modifier.height(40.dp)) // Space for EdgeButton
             }
@@ -232,7 +234,9 @@ fun DuoMessageCard(
         appName = { Text(if (message.isFromUser) "You" else "GitLab Duo") },
         title = { },
         time = { Text("now") },
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
     ) {
         Column {
             Text(
@@ -241,10 +245,12 @@ fun DuoMessageCard(
                 maxLines = 5,
                 overflow = TextOverflow.Ellipsis
             )
-            
+
             if (message.requiresApproval) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Button(

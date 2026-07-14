@@ -6,11 +6,9 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import `in`.aboobacker.labdroid.data.model.Commit
 import `in`.aboobacker.labdroid.data.model.Discussion
 import `in`.aboobacker.labdroid.data.model.Label
-import `in`.aboobacker.labdroid.data.model.MarkdownUpload
 import `in`.aboobacker.labdroid.data.model.MergeRequest
 import `in`.aboobacker.labdroid.data.model.MergeRequestChanges
 import `in`.aboobacker.labdroid.data.model.Milestone
-import `in`.aboobacker.labdroid.data.model.Note
 import `in`.aboobacker.labdroid.data.model.Pipeline
 import `in`.aboobacker.labdroid.data.model.Project
 import `in`.aboobacker.labdroid.data.model.User
@@ -226,7 +224,7 @@ class MergeRequestViewModel @Inject constructor(
                 val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
                 val body = MultipartBody.Part.createFormData("file", file.name, requestFile)
                 val upload = projectRepository.uploadFile(projectId, body)
-                
+
                 val currentText = _commentText.value
                 val newText = if (currentText.isEmpty()) {
                     upload.markdown

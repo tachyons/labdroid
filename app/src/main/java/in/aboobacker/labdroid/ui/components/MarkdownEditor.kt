@@ -64,9 +64,16 @@ fun MarkdownEditor(
                 ToolbarIcon(Icons.Default.Code)
                 Spacer(modifier = Modifier.weight(1f))
                 if (onImageUploadClick != null) {
-                    IconButton(onClick = onImageUploadClick, enabled = !isUploading, modifier = Modifier.size(24.dp)) {
+                    IconButton(
+                        onClick = onImageUploadClick,
+                        enabled = !isUploading,
+                        modifier = Modifier.size(24.dp)
+                    ) {
                         if (isUploading) {
-                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp
+                            )
                         } else {
                             Icon(
                                 Icons.Default.Attachment,

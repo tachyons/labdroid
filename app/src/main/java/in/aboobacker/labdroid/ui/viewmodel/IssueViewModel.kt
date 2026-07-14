@@ -37,9 +37,10 @@ class IssueViewModel @Inject constructor(
             config = PagingConfig(pageSize = 20),
             pagingSourceFactory = {
                 GitLabPagingSource { page, perPage ->
-                    val username = authRepository.getUsername() ?: api.getCurrentUser().username.also {
-                        authRepository.saveUsername(it)
-                    }
+                    val username =
+                        authRepository.getUsername() ?: api.getCurrentUser().username.also {
+                            authRepository.saveUsername(it)
+                        }
 
                     api.getIssues(
                         scope = params.scope,

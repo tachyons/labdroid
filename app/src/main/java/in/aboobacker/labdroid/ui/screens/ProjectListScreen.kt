@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
@@ -59,7 +60,6 @@ import `in`.aboobacker.labdroid.data.model.Project
 import `in`.aboobacker.labdroid.data.model.ProjectAccess
 import `in`.aboobacker.labdroid.data.model.User
 import `in`.aboobacker.labdroid.data.model.UserPermissions
-import `in`.aboobacker.labdroid.ui.components.GroupList
 import `in`.aboobacker.labdroid.ui.components.GroupListPaging
 import `in`.aboobacker.labdroid.ui.components.SkeletonLoader
 import `in`.aboobacker.labdroid.ui.components.StatusBadge
@@ -219,58 +219,65 @@ fun ProjectDashboard(
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         if (recentProjects.isNotEmpty()) {
-            item {
+            item(key = "recently_visited_header") {
                 SectionHeader(
                     title = stringResource(R.string.recently_visited),
                     icon = Icons.Default.History
                 )
-                Spacer(modifier = Modifier.height(16.dp))
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    recentProjects.take(3).forEach { project ->
-                        RecentlyVisitedItem(
-                            project.name,
-                            "Updated ${formatTimeAgo(project.lastActivityAt.orEmpty())}",
-                            Icons.Default.Folder,
-                            imageUrl = project.avatarUrl,
-                            onClick = { onProjectClick(project) }
-                        )
-                    }
-                }
             }
+
+            items(
+                items = recentProjects.take(3),
+                key = { "recent_${it.id}" }
+            ) { project ->
+                RecentlyVisitedItem(
+                    project.name,
+                    "Updated ${formatTimeAgo(project.lastActivityAt.orEmpty())}",
+                    Icons.Default.Folder,
+                    imageUrl = project.avatarUrl,
+                    onClick = { onProjectClick(project) }
+                )
+            }
+
+            item { Spacer(modifier = Modifier.height(12.dp)) }
         }
 
         if (starredProjects.isNotEmpty()) {
-            item {
+            item(key = "starred_header") {
                 SectionHeader(
                     title = stringResource(R.string.starred),
                     icon = Icons.Default.StarBorder,
                     onSeeAllClick = onSeeAllStarredClick
                 )
-                Spacer(modifier = Modifier.height(16.dp))
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    starredProjects.take(5).forEach { project ->
-                        StarredProjectCard(project, onProjectClick)
-                    }
-                }
             }
+
+            items(
+                items = starredProjects.take(5),
+                key = { "starred_${it.id}" }
+            ) { project ->
+                StarredProjectCard(project, onProjectClick)
+            }
+
+            item { Spacer(modifier = Modifier.height(12.dp)) }
         }
 
         if (personalProjects.isNotEmpty()) {
-            item {
+            item(key = "personal_header") {
                 SectionHeader(
                     title = stringResource(R.string.personal_projects),
                     icon = Icons.Default.Person,
                     onSeeAllClick = onSeeAllPersonalClick
                 )
-                Spacer(modifier = Modifier.height(16.dp))
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    personalProjects.take(5).forEach { project ->
-                        StarredProjectCard(project, onProjectClick)
-                    }
-                }
+            }
+
+            items(
+                items = personalProjects.take(5),
+                key = { "personal_${it.id}" }
+            ) { project ->
+                StarredProjectCard(project, onProjectClick)
             }
         }
     }

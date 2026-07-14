@@ -1,5 +1,6 @@
 package `in`.aboobacker.labdroid
 
+import android.content.pm.PackageManager
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
@@ -11,14 +12,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import android.content.pm.PackageManager
-import `in`.aboobacker.labdroid.ui.screens.DuoChatScreenWear
-import `in`.aboobacker.labdroid.ui.screens.TodosScreenWear
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation3.runtime.entryProvider
 import `in`.aboobacker.labdroid.ui.screens.CommitDetailScreen
 import `in`.aboobacker.labdroid.ui.screens.CommitListScreen
 import `in`.aboobacker.labdroid.ui.screens.DuoChatScreen
+import `in`.aboobacker.labdroid.ui.screens.DuoChatScreenWear
 import `in`.aboobacker.labdroid.ui.screens.EditProfileScreen
 import `in`.aboobacker.labdroid.ui.screens.EpicDetailScreen
 import `in`.aboobacker.labdroid.ui.screens.FileDetailScreen
@@ -37,6 +36,7 @@ import `in`.aboobacker.labdroid.ui.screens.RepositoryScreen
 import `in`.aboobacker.labdroid.ui.screens.SearchScreen
 import `in`.aboobacker.labdroid.ui.screens.SettingsScreen
 import `in`.aboobacker.labdroid.ui.screens.TodosScreen
+import `in`.aboobacker.labdroid.ui.screens.TodosScreenWear
 import `in`.aboobacker.labdroid.ui.screens.UserProfileScreen
 import `in`.aboobacker.labdroid.ui.viewmodel.AuthViewModel
 import `in`.aboobacker.labdroid.ui.viewmodel.CommitDetailViewModel
@@ -244,7 +244,7 @@ fun createAppEntryProvider(
                     navigator.navigate(
                         Screen.DuoChat(
                             projectId = key.projectId,
-                            rootNamespaceId = 9970,
+                            rootNamespaceId = currentUser?.duoDefaultNamespaceId,
                             additionalContext = context
                         )
                     )
@@ -272,7 +272,12 @@ fun createAppEntryProvider(
                     onTodoClick = { projectId, iid, type ->
                         when (type) {
                             "Issue" -> navigator.navigate(Screen.IssueDetail(projectId, iid))
-                            "MergeRequest" -> navigator.navigate(Screen.MergeRequestDetail(projectId, iid))
+                            "MergeRequest" -> navigator.navigate(
+                                Screen.MergeRequestDetail(
+                                    projectId,
+                                    iid
+                                )
+                            )
                         }
                     }
                 )
@@ -282,7 +287,12 @@ fun createAppEntryProvider(
                     onTodoClick = { projectId, iid, type ->
                         when (type) {
                             "Issue" -> navigator.navigate(Screen.IssueDetail(projectId, iid))
-                            "MergeRequest" -> navigator.navigate(Screen.MergeRequestDetail(projectId, iid))
+                            "MergeRequest" -> navigator.navigate(
+                                Screen.MergeRequestDetail(
+                                    projectId,
+                                    iid
+                                )
+                            )
                         }
                     }
                 )
@@ -346,7 +356,7 @@ fun createAppEntryProvider(
                     navigator.navigate(
                         Screen.DuoChat(
                             projectId = key.projectId,
-                            rootNamespaceId = 9970,
+                            rootNamespaceId = currentUser?.duoDefaultNamespaceId,
                             additionalContext = context
                         )
                     )
@@ -422,7 +432,7 @@ fun createAppEntryProvider(
                     navigator.navigate(
                         Screen.DuoChat(
                             projectId = key.projectId,
-                            rootNamespaceId = 9970,
+                            rootNamespaceId = currentUser?.duoDefaultNamespaceId,
                             additionalContext = context
                         )
                     )

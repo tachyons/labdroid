@@ -45,7 +45,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -84,6 +83,7 @@ fun DuoChatScreen(
     val isConnecting by viewModel.isConnecting.collectAsStateWithLifecycle()
     val isConnected by viewModel.isConnected.collectAsStateWithLifecycle()
     val workflowStatus by viewModel.workflowStatus.collectAsStateWithLifecycle()
+    val presets by viewModel.presets.collectAsStateWithLifecycle()
 
     LaunchedEffect(projectId, rootNamespaceId, initialGoal, additionalContext) {
         viewModel.setContext(projectId, rootNamespaceId, initialGoal, additionalContext)
@@ -94,6 +94,7 @@ fun DuoChatScreen(
         isConnecting = isConnecting,
         isConnected = isConnected,
         workflowStatus = workflowStatus,
+        presets = presets,
         onSendMessage = { viewModel.sendMessage(it) },
         onClearChat = { viewModel.clearChat() },
         onHandleApprovalDecision = { viewModel.handleApprovalDecision(it) },
@@ -108,6 +109,7 @@ fun DuoChatContent(
     isConnecting: Boolean,
     isConnected: Boolean,
     workflowStatus: WorkflowStatus?,
+    presets: List<String>,
     onSendMessage: (String) -> Unit,
     onClearChat: () -> Unit,
     onHandleApprovalDecision: (ApprovalDecision) -> Unit,
@@ -211,25 +213,37 @@ fun DuoChatContent(
                     )
                 }
 
-                item {
-                    SuggestedActionItem(
-                        icon = Icons.Default.Description,
-                        text = "Summarize my latest MR",
-                        onClick = { onSendMessage("Summarize my latest MR") }
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    SuggestedActionItem(
-                        icon = Icons.Default.Code,
-                        text = "Explain this code snippet",
-                        onClick = { onSendMessage("Explain this code snippet") }
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    SuggestedActionItem(
-                        icon = Icons.Default.Science,
-                        text = "Write a unit test for my changes",
-                        onClick = { onSendMessage("Write a unit test for my changes") }
-                    )
-                    Spacer(modifier = Modifier.height(24.dp))
+                if (presets.isNotEmpty()) {
+                    items(presets.size) { index ->
+                        val preset = presets[index]
+                        SuggestedActionItem(
+                            icon = Icons.Default.Psychology,
+                            text = preset,
+                            onClick = { onSendMessage(preset) }
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                } else {
+                    item {
+                        SuggestedActionItem(
+                            icon = Icons.Default.Description,
+                            text = "Summarize my latest MR",
+                            onClick = { onSendMessage("Summarize my latest MR") }
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        SuggestedActionItem(
+                            icon = Icons.Default.Code,
+                            text = "Explain this code snippet",
+                            onClick = { onSendMessage("Explain this code snippet") }
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        SuggestedActionItem(
+                            icon = Icons.Default.Science,
+                            text = "Write a unit test for my changes",
+                            onClick = { onSendMessage("Write a unit test for my changes") }
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                    }
                 }
             } else {
                 items(messages.size) { index ->
@@ -570,6 +584,7 @@ fun DuoChatScreenPreview() {
             isConnecting = false,
             isConnected = true,
             workflowStatus = null,
+            presets = emptyList(),
             onSendMessage = {},
             onClearChat = {},
             onHandleApprovalDecision = {},

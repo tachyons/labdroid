@@ -1,5 +1,7 @@
 package `in`.aboobacker.labdroid
 
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -9,6 +11,12 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Assignment
+import androidx.compose.material.icons.automirrored.filled.CallMerge
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
@@ -16,13 +24,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.material3.rememberTopAppBarState
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Assignment
-import androidx.compose.material.icons.automirrored.filled.CallMerge
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -31,38 +32,34 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
-import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.scene.DialogSceneStrategy
 import androidx.navigation3.ui.NavDisplay
-import dagger.hilt.android.AndroidEntryPoint
-import android.content.pm.PackageManager
-import android.os.Build
-import androidx.compose.ui.platform.LocalContext
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import dagger.hilt.android.AndroidEntryPoint
 import `in`.aboobacker.labdroid.ui.components.DetailTopBar
-import `in`.aboobacker.labdroid.worker.TodoWorker
-import java.util.concurrent.TimeUnit
-import `in`.aboobacker.labdroid.ui.components.HomeBottomNavigation
 import `in`.aboobacker.labdroid.ui.components.HomeTopBar
 import `in`.aboobacker.labdroid.ui.components.LocalTopBarActions
 import `in`.aboobacker.labdroid.ui.components.TopBarActions
 import `in`.aboobacker.labdroid.ui.screens.LoginScreen
 import `in`.aboobacker.labdroid.ui.theme.LabdroidTheme
-import androidx.wear.compose.material3.MaterialTheme as WearMaterialTheme
 import `in`.aboobacker.labdroid.ui.viewmodel.AuthState
 import `in`.aboobacker.labdroid.ui.viewmodel.AuthViewModel
 import `in`.aboobacker.labdroid.ui.viewmodel.SettingsViewModel
+import `in`.aboobacker.labdroid.worker.TodoWorker
 import kotlinx.serialization.Serializable
 import net.openid.appauth.AuthorizationException
 import net.openid.appauth.AuthorizationResponse
 import net.openid.appauth.AuthorizationService
+import java.util.concurrent.TimeUnit
+import androidx.wear.compose.material3.MaterialTheme as WearMaterialTheme
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -108,13 +105,13 @@ class MainActivity : ComponentActivity() {
                 WearMaterialTheme {
                     val authViewModel: AuthViewModel = hiltViewModel()
                     val authState by authViewModel.authState.collectAsState()
-                    val currentUser by authViewModel.currentUser.collectAsState()
 
                     LaunchedEffect(authState) {
                         if (authState is AuthState.Authenticated) {
                             scheduleTodoWorker()
                         } else if (authState is AuthState.Unauthenticated) {
-                            WorkManager.getInstance(this@MainActivity).cancelUniqueWork("TodoWorker")
+                            WorkManager.getInstance(this@MainActivity)
+                                .cancelUniqueWork("TodoWorker")
                         }
                     }
 
@@ -177,7 +174,8 @@ class MainActivity : ComponentActivity() {
                             settingsViewModel.toggleDarkMode(isDarkMode) // Ensure sync if needed, though state is already from store
                             scheduleTodoWorker()
                         } else if (authState is AuthState.Unauthenticated) {
-                            WorkManager.getInstance(this@MainActivity).cancelUniqueWork("TodoWorker")
+                            WorkManager.getInstance(this@MainActivity)
+                                .cancelUniqueWork("TodoWorker")
                         }
                     }
 
@@ -206,7 +204,8 @@ class MainActivity : ComponentActivity() {
                                 val currentBackStack =
                                     navigationState.backStacks[navigationState.topLevelRoute]
                                 val currentScreen =
-                                    (currentBackStack?.lastOrNull() ?: navigationState.startRoute) as Screen
+                                    (currentBackStack?.lastOrNull()
+                                        ?: navigationState.startRoute) as Screen
                                 val isTopLevel = currentScreen.isTopLevel
                                 val hideNavigation = currentScreen.hideNavigation
 
@@ -233,7 +232,14 @@ class MainActivity : ComponentActivity() {
                                                     scrollBehavior = scrollBehavior,
                                                     onSearchClick = { navigator.navigate(Screen.Search) },
                                                     onTodosClick = { navigator.navigate(Screen.Todo) },
-                                                    onProfileClick = { navigator.navigate(Screen.Profile) }
+                                                    onProfileClick = { navigator.navigate(Screen.Profile) },
+                                                    onDuoClick = {
+                                                        navigator.navigate(
+                                                            Screen.DuoChat(
+                                                                rootNamespaceId = currentUser?.duoDefaultNamespaceId
+                                                            )
+                                                        )
+                                                    }
                                                 )
                                             } else if (currentScreen !is Screen.Search && currentScreen !is Screen.DuoChat && !hideNavigation) {
                                                 DetailTopBar(
@@ -248,7 +254,11 @@ class MainActivity : ComponentActivity() {
                                             NavDisplay(
                                                 entries = navigationState.toEntries(entryProvider),
                                                 onBack = { navigator.goBack() },
-                                                sceneStrategies = remember { listOf(DialogSceneStrategy<NavKey>()) }
+                                                sceneStrategies = remember {
+                                                    listOf(
+                                                        DialogSceneStrategy<NavKey>()
+                                                    )
+                                                }
                                             )
                                         }
                                     }
@@ -268,13 +278,23 @@ class MainActivity : ComponentActivity() {
                                             item(
                                                 selected = currentScreen is Screen.Issues,
                                                 onClick = { navigator.navigate(Screen.Issues) },
-                                                icon = { Icon(Icons.AutoMirrored.Filled.Assignment, null) },
+                                                icon = {
+                                                    Icon(
+                                                        Icons.AutoMirrored.Filled.Assignment,
+                                                        null
+                                                    )
+                                                },
                                                 label = { Text("Issues") }
                                             )
                                             item(
                                                 selected = currentScreen is Screen.MergeRequests,
                                                 onClick = { navigator.navigate(Screen.MergeRequests) },
-                                                icon = { Icon(Icons.AutoMirrored.Filled.CallMerge, null) },
+                                                icon = {
+                                                    Icon(
+                                                        Icons.AutoMirrored.Filled.CallMerge,
+                                                        null
+                                                    )
+                                                },
                                                 label = { Text("MRs") }
                                             )
                                             item(

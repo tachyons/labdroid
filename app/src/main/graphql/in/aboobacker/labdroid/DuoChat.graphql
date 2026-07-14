@@ -1,0 +1,39 @@
+query getAiChatContextPresets($resourceId: AiModelID, $projectId: ProjectID, $url: String, $questionCount: Int) {
+  aiChatContextPresets(
+    resourceId: $resourceId
+    projectId: $projectId
+    url: $url
+    questionCount: $questionCount
+  ) {
+    questions
+  }
+}
+
+query getAiChatAvailableModels($rootNamespaceId: GroupID, $namespaceId: GroupID, $projectId: ProjectID) {
+  aiChatAvailableModels(
+    rootNamespaceId: $rootNamespaceId
+    namespaceId: $namespaceId
+    projectId: $projectId
+  ) {
+    defaultModel {
+      name
+      ref
+      modelProvider
+    }
+    selectableModels {
+      name
+      ref
+      modelProvider
+      modelDescription
+      costIndicator
+    }
+    pinnedModel {
+      name
+      ref
+    }
+  }
+}
+
+query getGitlabCreditsAvailable($namespaceId: NamespaceID) {
+  gitlabCreditsAvailable(namespaceId: $namespaceId)
+}

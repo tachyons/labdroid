@@ -3,10 +3,10 @@ package `in`.aboobacker.labdroid.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import `in`.aboobacker.labdroid.data.model.User
+import `in`.aboobacker.labdroid.data.model.UserStatus
 import `in`.aboobacker.labdroid.data.remote.GitLabApi
 import `in`.aboobacker.labdroid.data.repository.AuthRepository
-import `in`.aboobacker.labdroid.data.repository.ProjectRepository
+import `in`.aboobacker.labdroid.data.repository.UserRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,14 +20,13 @@ import javax.inject.Inject
 class AuthViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val gitLabApi: GitLabApi,
-    private val projectRepository: ProjectRepository
+    private val userRepository: UserRepository
 ) : ViewModel() {
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
 
-    private val _currentUser = MutableStateFlow<User?>(null)
-    val currentUser: StateFlow<User?> = _currentUser.asStateFlow()
+    val currentUser = userRepository.currentUser
 
     init {
         viewModelScope.launch {
@@ -36,7 +35,7 @@ class AuthViewModel @Inject constructor(
                 _authState.value =
                     if (isAuthenticated) AuthState.Authenticated else AuthState.Unauthenticated
 
-                if (isAuthenticated && _currentUser.value == null) {
+                if (isAuthenticated && currentUser.value == null) {
                     fetchUserProfile()
                 }
             }
@@ -48,7 +47,7 @@ class AuthViewModel @Inject constructor(
             try {
                 coroutineScope {
                     val userRestDeferred = async { gitLabApi.getCurrentUser() }
-                    val dashboardDataDeferred = async { projectRepository.getDashboardData() }
+                    val dashboardDataDeferred = async { userRepository.getDashboardData() }
 
                     val user = userRestDeferred.await()
                     val dashboardData = dashboardDataDeferred.await()
@@ -59,10 +58,21 @@ class AuthViewModel @Inject constructor(
                             ?: user.hasDuoAccess,
                         duoClassicChatAvailable = currentUserData?.duoClassicChatAvailable ?: false,
                         duoChatAvailableFeatures = currentUserData?.duoChatAvailableFeatures
-                            ?: emptyList()
+                            ?: emptyList(),
+                        duoDefaultNamespaceId = currentUserData?.userPreferences?.duoDefaultNamespace?.id?.substringAfterLast(
+                            "/"
+                        )?.toLongOrNull(),
+                        status = currentUserData?.status?.let { status ->
+                            UserStatus(
+                                emoji = status.emoji,
+                                message = status.message,
+                                availability = status.availability?.rawValue,
+                                clearStatusAt = status.clearStatusAt?.toString()
+                            )
+                        }
                     )
 
-                    _currentUser.value = updatedUser
+                    userRepository.setCurrentUser(updatedUser)
                     authRepository.saveUsername(updatedUser.username)
                 }
             } catch (e: Exception) {
@@ -94,6 +104,7 @@ class AuthViewModel @Inject constructor(
 
     fun logout() {
         authRepository.logout()
+        userRepository.clear()
         _authState.value = AuthState.Unauthenticated
     }
 }

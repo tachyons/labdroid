@@ -5,8 +5,8 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import `in`.aboobacker.labdroid.BuildConfig
 import `in`.aboobacker.labdroid.ApprovalDecision
+import `in`.aboobacker.labdroid.BuildConfig
 import `in`.aboobacker.labdroid.DuoContextItem
 import `in`.aboobacker.labdroid.GitLabWorkflowClient
 import `in`.aboobacker.labdroid.StartRequest
@@ -14,6 +14,7 @@ import `in`.aboobacker.labdroid.WorkflowClientEvent
 import `in`.aboobacker.labdroid.WorkflowStatus
 import `in`.aboobacker.labdroid.WorkflowWebSocketOptions
 import `in`.aboobacker.labdroid.data.local.AuthPreferences
+import `in`.aboobacker.labdroid.data.repository.DuoRepository
 import `in`.aboobacker.labdroid.extractApprovalTools
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,11 +38,15 @@ data class ChatMessage(
 @HiltViewModel
 class DuoChatViewModel @Inject constructor(
     private val workflowClient: GitLabWorkflowClient,
-    private val authPreferences: AuthPreferences
+    private val authPreferences: AuthPreferences,
+    private val duoRepository: DuoRepository
 ) : ViewModel() {
 
     private val _messages = mutableStateListOf<ChatMessage>()
     val messages: List<ChatMessage> get() = _messages
+
+    private val _presets = MutableStateFlow<List<String>>(emptyList())
+    val presets: StateFlow<List<String>> = _presets.asStateFlow()
 
     private val _isConnected = MutableStateFlow(false)
     val isConnected: StateFlow<Boolean> = _isConnected
@@ -58,6 +63,7 @@ class DuoChatViewModel @Inject constructor(
     private var currentProjectId: Long? = null
     private var currentRootNamespaceId: Long? = null
     private var currentAdditionalContext: List<DuoContextItem>? = null
+    private var currentGoal: String? = null
 
     fun setContext(
         projectId: Long?,
@@ -72,11 +78,30 @@ class DuoChatViewModel @Inject constructor(
         if (initialGoal != null && _messages.isEmpty()) {
             sendMessage(initialGoal)
         }
+
+        fetchPresets()
+    }
+
+    private fun fetchPresets() {
+        viewModelScope.launch {
+            try {
+                val questions = duoRepository.getAiChatContextPresets(
+                    projectId = currentProjectId,
+                    url = null // Can pass webUrl if available in context
+                )
+                if (questions.isNotEmpty()) {
+                    _presets.value = questions
+                }
+            } catch (e: Exception) {
+                Log.e("DuoChatViewModel", "Failed to fetch presets", e)
+            }
+        }
     }
 
     fun sendMessage(text: String) {
         if (text.isBlank()) return
 
+        currentGoal = text
         val userMessage = ChatMessage(text = text, isFromUser = true)
         _messages.add(userMessage)
 
@@ -271,16 +296,24 @@ class DuoChatViewModel @Inject constructor(
 
     fun handleApprovalDecision(decision: ApprovalDecision) {
         val workflowId = workflowClient.currentWorkflowId ?: return
+        val goal = currentGoal ?: ""
         _pendingApprovalTools.value = emptyList()
 
         // Mark the last approval message as handled
         val lastIndex = _messages.indexOfLast { it.requiresApproval }
         if (lastIndex != -1) {
-            _messages[lastIndex] = _messages[lastIndex].copy(requiresApproval = false)
+            _messages[lastIndex] =
+                _messages[lastIndex].copy(requiresApproval = false, isLoading = true)
         }
 
         viewModelScope.launch {
-            workflowClient.sendApprovalDecision(workflowId, decision)
+            workflowClient.sendApprovalDecision(
+                workflowID = workflowId,
+                decision = decision,
+                goal = goal,
+                projectId = currentProjectId?.toString(),
+                rootNamespaceId = currentRootNamespaceId?.toString()
+            )
         }
     }
 
