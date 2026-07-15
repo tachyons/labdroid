@@ -1,18 +1,3 @@
-# This file contains the fastlane.tools configuration
-# You can find the documentation at https://docs.fastlane.tools
-#
-# For a list of all available actions, check out
-#
-#     https://docs.fastlane.tools/actions
-#
-# For a list of all available plugins, check out
-#
-#     https://docs.fastlane.tools/plugins/available-plugins
-#
-
-# Uncomment the line if you want fastlane to automatically update itself
-# update_fastlane
-
 default_platform(:android)
 
 platform :android do
@@ -21,18 +6,16 @@ platform :android do
     gradle(task: "test")
   end
 
-  desc "Submit a new Beta Build to Crashlytics Beta"
-  lane :beta do
-    gradle(task: "clean assembleRelease")
-    crashlytics
-  
-    # sh "your_script.sh"
-    # You can also use other beta testing services here
+  desc "Submit a new build to F-Droid (Verification only)"
+  lane :fdroid_check do
+    # This lane can be used to verify that metadata is correct
+    # and the app builds correctly for F-Droid requirements
+    gradle(task: "assembleRelease")
   end
 
-  desc "Deploy a new version to the Google Play"
+  desc "Deploy a new version to the Google Play Store"
   lane :deploy do
     gradle(task: "clean assembleRelease")
-    upload_to_play_store
+    # upload_to_play_store # Uncomment and configure if needed in the future
   end
 end

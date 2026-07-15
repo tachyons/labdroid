@@ -28,3 +28,15 @@ jobs:
 
     - name: Run Unit Tests
       run: ./gradlew test
+
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.2'
+        bundler-cache: true
+
+    - name: Install fastlane
+      run: bundle install || gem install fastlane
+
+    - name: Run fastlane test lane
+      run: bundle exec fastlane test || fastlane test
