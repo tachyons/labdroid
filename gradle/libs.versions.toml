@@ -37,6 +37,7 @@ material3Adaptive = "1.5.0-alpha22"
 wearCompose = "1.6.2"
 work = "2.11.2"
 kotlin-metadata = "2.4.0"
+splashscreen = "1.2.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -90,6 +91,7 @@ androidx-wear-compose-navigation = { group = "androidx.wear.compose", name = "co
 androidx-wear-compose-ui-tooling = { group = "androidx.wear.compose", name = "compose-ui-tooling", version.ref = "wearCompose" }
 androidx-work-runtime = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work" }
 metadata-kotlin = { group = "org.jetbrains.kotlin", name = "kotlin-metadata-jvm", version.ref = "kotlin-metadata" }
+androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "splashscreen" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

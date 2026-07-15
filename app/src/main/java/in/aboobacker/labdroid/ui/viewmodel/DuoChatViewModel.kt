@@ -16,6 +16,7 @@ import `in`.aboobacker.labdroid.WorkflowWebSocketOptions
 import `in`.aboobacker.labdroid.data.local.AuthPreferences
 import `in`.aboobacker.labdroid.data.repository.DuoRepository
 import `in`.aboobacker.labdroid.extractApprovalTools
+import `in`.aboobacker.labdroid.notifications.NotificationHelper
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -39,7 +40,8 @@ data class ChatMessage(
 class DuoChatViewModel @Inject constructor(
     private val workflowClient: GitLabWorkflowClient,
     private val authPreferences: AuthPreferences,
-    private val duoRepository: DuoRepository
+    private val duoRepository: DuoRepository,
+    private val notificationHelper: NotificationHelper
 ) : ViewModel() {
 
     private val _messages = mutableStateListOf<ChatMessage>()
@@ -50,6 +52,12 @@ class DuoChatViewModel @Inject constructor(
 
     private val _isConnected = MutableStateFlow(false)
     val isConnected: StateFlow<Boolean> = _isConnected
+
+    private var isAppInForeground = true
+
+    fun setForegroundState(isForeground: Boolean) {
+        isAppInForeground = isForeground
+    }
 
     private val _isConnecting = MutableStateFlow(false)
     val isConnecting: StateFlow<Boolean> = _isConnecting
@@ -204,6 +212,9 @@ class DuoChatViewModel @Inject constructor(
                     val content = event.checkpoint.content
                     if (content != null) {
                         updateLastAiMessage(content)
+                        if (!isAppInForeground) {
+                            notificationHelper.showDuoChatNotification(content)
+                        }
                     }
                     if (event.checkpoint.status == WorkflowStatus.TOOL_CALL_APPROVAL_REQUIRED) {
                         val tools = extractApprovalTools(event.checkpoint)

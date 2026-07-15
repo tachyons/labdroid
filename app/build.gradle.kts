@@ -67,6 +67,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.compose.material3.adaptive.navigation.suite)
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.places)
 
     implementation(libs.retrofit)

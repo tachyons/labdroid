@@ -34,6 +34,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.scene.DialogSceneStrategy
@@ -52,6 +55,7 @@ import `in`.aboobacker.labdroid.ui.screens.LoginScreen
 import `in`.aboobacker.labdroid.ui.theme.LabdroidTheme
 import `in`.aboobacker.labdroid.ui.viewmodel.AuthState
 import `in`.aboobacker.labdroid.ui.viewmodel.AuthViewModel
+import `in`.aboobacker.labdroid.ui.viewmodel.DuoChatViewModel
 import `in`.aboobacker.labdroid.ui.viewmodel.SettingsViewModel
 import `in`.aboobacker.labdroid.worker.TodoWorker
 import kotlinx.serialization.Serializable
@@ -67,7 +71,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var authService: AuthorizationService
 
     private val authLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
+        ActivityResultContracts.StartActivityForResult(),
     ) { result ->
         val data = result.data
         if (data != null) {
@@ -83,6 +87,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         authService = AuthorizationService(this)
         enableEdgeToEdge()
@@ -100,6 +105,19 @@ class MainActivity : ComponentActivity() {
             }
             val settingsViewModel: SettingsViewModel = hiltViewModel()
             val isDarkMode by settingsViewModel.isDarkMode.collectAsState()
+            val duoChatViewModel: DuoChatViewModel = hiltViewModel()
+
+            val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+            LaunchedEffect(lifecycleOwner) {
+                val observer = LifecycleEventObserver { _, event ->
+                    when (event) {
+                        Lifecycle.Event.ON_RESUME -> duoChatViewModel.setForegroundState(true)
+                        Lifecycle.Event.ON_PAUSE -> duoChatViewModel.setForegroundState(false)
+                        else -> {}
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+            }
 
             if (isWatch) {
                 WearMaterialTheme {
@@ -132,12 +150,20 @@ class MainActivity : ComponentActivity() {
                         settingsViewModel = settingsViewModel
                     )
 
+                    LaunchedEffect(intent) {
+                        if (intent?.getStringExtra("screen") == "duo_chat") {
+                            navigator.navigate(Screen.DuoChat())
+                        } else if (intent?.data?.host == "duo_chat") {
+                            navigator.navigate(Screen.DuoChat())
+                        }
+                    }
+
                     when (val state = authState) {
                         is AuthState.Authenticated -> {
                             NavDisplay(
                                 entries = navigationState.toEntries(entryProvider),
                                 onBack = { navigator.goBack() },
-                                sceneStrategies = remember { listOf(DialogSceneStrategy<NavKey>()) }
+                                sceneStrategies = remember { listOf(DialogSceneStrategy()) }
                             )
                         }
 
@@ -227,13 +253,13 @@ class MainActivity : ComponentActivity() {
                                             } else if (isTopLevel) {
                                                 HomeTopBar(
                                                     user = currentUser,
-                                                    title = (currentScreen as? Screen)?.getTitle()
+                                                    title = currentScreen.getTitle()
                                                         ?: "GitLab",
                                                     scrollBehavior = scrollBehavior,
                                                     onSearchClick = { navigator.navigate(Screen.Search) },
                                                     onTodosClick = { navigator.navigate(Screen.Todo) },
                                                     onProfileClick = { navigator.navigate(Screen.Profile) },
-                                                    onDuoClick = {
+                                                onDuoClick = {
                                                         navigator.navigate(
                                                             Screen.DuoChat(
                                                                 rootNamespaceId = currentUser?.duoDefaultNamespaceId
@@ -243,7 +269,7 @@ class MainActivity : ComponentActivity() {
                                                 )
                                             } else if (currentScreen !is Screen.Search && currentScreen !is Screen.DuoChat && !hideNavigation) {
                                                 DetailTopBar(
-                                                    title = (currentScreen as? Screen)?.getTitle()
+                                                    title = currentScreen.getTitle()
                                                         ?: "GitLab",
                                                     onBackClick = { navigator.goBack() }
                                                 )
@@ -256,7 +282,7 @@ class MainActivity : ComponentActivity() {
                                                 onBack = { navigator.goBack() },
                                                 sceneStrategies = remember {
                                                     listOf(
-                                                        DialogSceneStrategy<NavKey>()
+                                                        DialogSceneStrategy()
                                                     )
                                                 }
                                             )
@@ -399,6 +425,9 @@ sealed class Screen : NavKey {
     data object Search : Screen()
 
     @Serializable
+    data object About : Screen()
+
+    @Serializable
     data class UserProfile(val userId: Long? = null, val username: String? = null) : Screen()
 
     @Serializable
@@ -454,7 +483,7 @@ sealed class Screen : NavKey {
 
         is Issues, is IssueDetail, is CreateIssue, is EditIssue, is EpicDetail -> NavigationCategory.ISSUES
         is MergeRequests, is MergeRequestDetail, is MergeRequestEdit, is PipelineDetail -> NavigationCategory.MRS
-        is Profile, is EditProfile, is Settings, is UserProfile, is DuoChat -> NavigationCategory.PROFILE
+        is Profile, is EditProfile, is Settings, is UserProfile, is DuoChat, is About -> NavigationCategory.PROFILE
         is Todo -> NavigationCategory.NONE
         is Search -> NavigationCategory.NONE
     }
@@ -487,6 +516,7 @@ sealed class Screen : NavKey {
         is UserProfile -> "User Profile"
         is EditProfile -> "Edit Profile"
         is Settings -> "Settings"
+        is About -> "About Labdroid"
         is Pipelines -> "Pipelines"
         is DuoChat -> "GitLab Duo Chat"
     }

@@ -431,21 +431,21 @@ fun ProfileStats(user: User) {
             .padding(24.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        StatItem(label = "FOLLOWERS", value = formatCount(user.followers))
+        StatItem(label = stringResource(R.string.followers).uppercase(), value = formatCount(user.followers))
         Box(
             modifier = Modifier
                 .width(1.dp)
                 .height(40.dp)
                 .background(MaterialTheme.colorScheme.outlineVariant)
         )
-        StatItem(label = "FOLLOWING", value = formatCount(user.following))
+        StatItem(label = stringResource(R.string.following).uppercase(), value = formatCount(user.following))
         Box(
             modifier = Modifier
                 .width(1.dp)
                 .height(40.dp)
                 .background(MaterialTheme.colorScheme.outlineVariant)
         )
-        StatItem(label = "STARS", value = formatCount(user.starCount))
+        StatItem(label = stringResource(R.string.stars).uppercase(), value = formatCount(user.starCount))
     }
 }
 

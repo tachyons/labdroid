@@ -61,6 +61,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -69,6 +70,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import `in`.aboobacker.labdroid.R
 import `in`.aboobacker.labdroid.data.model.Discussion
 import `in`.aboobacker.labdroid.data.model.Issue
 import `in`.aboobacker.labdroid.data.model.Note
@@ -137,14 +139,14 @@ fun IssueDetailScreen(
                             }) {
                                 Icon(
                                     imageVector = if (issue.state == "opened") Icons.Default.Cancel else Icons.Default.CheckCircle,
-                                    contentDescription = if (issue.state == "opened") "Close" else "Reopen",
+                                    contentDescription = if (issue.state == "opened") stringResource(R.string.close) else stringResource(R.string.reopen),
                                     tint = if (issue.state == "opened") MaterialTheme.colorScheme.error else Color(
                                         0xFF4CAF50
                                     )
                                 )
                             }
                             IconButton(onClick = { onEditClick(projectId, issueIid) }) {
-                                Icon(Icons.Default.Edit, contentDescription = "Edit")
+                                Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.edit))
                             }
                         }
 
@@ -152,7 +154,7 @@ fun IssueDetailScreen(
                             IconButton(onClick = onDuoClick) {
                                 Icon(
                                     Icons.Default.AutoAwesome,
-                                    contentDescription = "GitLab Duo",
+                                    contentDescription = stringResource(R.string.ask_duo),
                                     tint = Color(0xFF8E75C2)
                                 )
                             }
@@ -167,19 +169,19 @@ fun IssueDetailScreen(
                             val shareIntent = Intent.createChooser(sendIntent, null)
                             context.startActivity(shareIntent)
                         }) {
-                            Icon(Icons.Default.Share, contentDescription = "Share")
+                            Icon(Icons.Default.Share, contentDescription = stringResource(R.string.share))
                         }
 
                         Box {
                             IconButton(onClick = { showMenu = !showMenu }) {
-                                Icon(Icons.Default.MoreVert, contentDescription = "More")
+                                Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.more))
                             }
                             DropdownMenu(
                                 expanded = showMenu,
                                 onDismissRequest = { showMenu = false }
                             ) {
                                 DropdownMenuItem(
-                                    text = { Text("Open in Browser") },
+                                    text = { Text(stringResource(R.string.open_in_browser)) },
                                     onClick = {
                                         showMenu = false
                                         val intent =
@@ -188,7 +190,7 @@ fun IssueDetailScreen(
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Copy Link") },
+                                    text = { Text(stringResource(R.string.copy_link)) },
                                     onClick = {
                                         showMenu = false
                                         clipboardManager.setText(AnnotatedString(issue.webUrl))
@@ -198,7 +200,7 @@ fun IssueDetailScreen(
                                     DropdownMenuItem(
                                         text = {
                                             Text(
-                                                "Delete Issue",
+                                                stringResource(R.string.delete),
                                                 color = MaterialTheme.colorScheme.error
                                             )
                                         },
@@ -311,7 +313,7 @@ fun IssueDetailScreen(
                         ExtendedFloatingActionButton(
                             onClick = onDuoClick,
                             icon = { Icon(Icons.Default.AutoAwesome, null) },
-                            text = { Text("Ask Duo") },
+                            text = { Text(stringResource(R.string.ask_duo)) },
                             modifier = Modifier
                                 .align(Alignment.BottomEnd)
                                 .padding(16.dp),
@@ -405,7 +407,7 @@ fun IssueDetailContent(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Description",
+                            text = stringResource(R.string.description),
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                         )
                         if (canEdit) {
@@ -415,7 +417,7 @@ fun IssueDetailContent(
                             ) {
                                 Icon(
                                     Icons.Default.Edit,
-                                    contentDescription = "Edit Description",
+                                    contentDescription = stringResource(R.string.edit),
                                     modifier = Modifier.size(16.dp),
                                     tint = MaterialTheme.colorScheme.primary
                                 )
@@ -443,12 +445,12 @@ fun IssueDetailContent(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Activity",
+                    text = stringResource(R.string.activity),
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                 )
                 TextButton(onClick = { isNewestFirst = !isNewestFirst }) {
                     Text(
-                        text = if (isNewestFirst) "Sort: Newest" else "Sort: Oldest",
+                        text = if (isNewestFirst) stringResource(R.string.sort_newest) else stringResource(R.string.sort_oldest),
                         style = MaterialTheme.typography.labelMedium
                     )
                     Icon(
@@ -508,7 +510,7 @@ fun IssueDetailContent(
                     onClick = onLoadMoreDiscussions,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Load more discussions")
+                    Text(stringResource(R.string.load_more_discussions))
                 }
             }
         }
@@ -604,15 +606,15 @@ fun IssueInfoGrid(issue: Issue, onProfileClick: (Long) -> Unit = {}) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth()) {
                 InfoItem(
-                    label = "ASSIGNEE",
-                    value = issue.assignees.firstOrNull()?.name ?: "Unassigned",
+                    label = stringResource(R.string.assignee).uppercase(),
+                    value = issue.assignees.firstOrNull()?.name ?: stringResource(R.string.unassigned),
                     avatarUrl = issue.assignees.firstOrNull()?.avatarUrl,
                     modifier = Modifier.weight(1f),
                     onValueClick = { issue.assignees.firstOrNull()?.id?.let { onProfileClick(it) } }
                 )
                 InfoItem(
-                    label = "MILESTONE",
-                    value = issue.milestone?.title ?: "None",
+                    label = stringResource(R.string.milestone).uppercase(),
+                    value = issue.milestone?.title ?: stringResource(R.string.none),
                     valueColor = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.weight(1f)
                 )
@@ -620,13 +622,13 @@ fun IssueInfoGrid(issue: Issue, onProfileClick: (Long) -> Unit = {}) {
             Spacer(modifier = Modifier.height(16.dp))
             Row(modifier = Modifier.fillMaxWidth()) {
                 InfoItem(
-                    label = "WEIGHT",
-                    value = issue.weight?.toString() ?: "None",
+                    label = stringResource(R.string.weight).uppercase(),
+                    value = issue.weight?.toString() ?: stringResource(R.string.none),
                     modifier = Modifier.weight(1f)
                 )
                 InfoItem(
-                    label = "CONFIDENTIAL",
-                    value = if (issue.confidential) "Yes" else "No",
+                    label = stringResource(R.string.confidential).uppercase(),
+                    value = if (issue.confidential) stringResource(R.string.yes) else stringResource(R.string.no),
                     modifier = Modifier.weight(1f)
                 )
             }

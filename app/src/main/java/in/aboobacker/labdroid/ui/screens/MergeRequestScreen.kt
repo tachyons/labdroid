@@ -72,6 +72,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
@@ -81,6 +82,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import `in`.aboobacker.labdroid.R
 import `in`.aboobacker.labdroid.data.model.Change
 import `in`.aboobacker.labdroid.data.model.Discussion
 import `in`.aboobacker.labdroid.data.model.MergeRequest
@@ -152,7 +154,7 @@ fun MergeRequestScreen(
                             IconButton(onClick = { viewModel.mergeMergeRequest(projectId, iid) }) {
                                 Icon(
                                     Icons.AutoMirrored.Filled.MergeType,
-                                    contentDescription = "Merge",
+                                    contentDescription = stringResource(R.string.merge_requests),
                                     tint = MaterialTheme.colorScheme.primary
                                 )
                             }
@@ -160,7 +162,7 @@ fun MergeRequestScreen(
 
                         if (canEdit) {
                             IconButton(onClick = { onEditClick(projectId, iid) }) {
-                                Icon(Icons.Default.Edit, contentDescription = "Edit")
+                                Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.edit))
                             }
                         }
 
@@ -168,7 +170,7 @@ fun MergeRequestScreen(
                             IconButton(onClick = onDuoClick) {
                                 Icon(
                                     Icons.Default.AutoAwesome,
-                                    contentDescription = "GitLab Duo",
+                                    contentDescription = stringResource(R.string.ask_duo),
                                     tint = Color(0xFF8E75C2)
                                 )
                             }
@@ -183,12 +185,12 @@ fun MergeRequestScreen(
                             val shareIntent = Intent.createChooser(sendIntent, null)
                             context.startActivity(shareIntent)
                         }) {
-                            Icon(Icons.Default.Share, contentDescription = "Share")
+                            Icon(Icons.Default.Share, contentDescription = stringResource(R.string.share))
                         }
 
                         Box {
                             IconButton(onClick = { showMenu = !showMenu }) {
-                                Icon(Icons.Default.MoreVert, contentDescription = "More")
+                                Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.more))
                             }
                             DropdownMenu(
                                 expanded = showMenu,
@@ -198,7 +200,7 @@ fun MergeRequestScreen(
                                     DropdownMenuItem(
                                         text = {
                                             Text(
-                                                "Close Merge Request",
+                                                stringResource(R.string.close),
                                                 color = MaterialTheme.colorScheme.error
                                             )
                                         },
@@ -209,7 +211,7 @@ fun MergeRequestScreen(
                                     )
                                 }
                                 DropdownMenuItem(
-                                    text = { Text("Open in Browser") },
+                                    text = { Text(stringResource(R.string.open_in_browser)) },
                                     onClick = {
                                         showMenu = false
                                         val intent =
@@ -218,7 +220,7 @@ fun MergeRequestScreen(
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Copy Link") },
+                                    text = { Text(stringResource(R.string.copy_link)) },
                                     onClick = {
                                         showMenu = false
                                         clipboardManager.setText(AnnotatedString(mr.webUrl))
@@ -317,7 +319,7 @@ fun MergeRequestScreen(
                     ExtendedFloatingActionButton(
                         onClick = onDuoClick,
                         icon = { Icon(Icons.Default.AutoAwesome, null) },
-                        text = { Text("Ask Duo") },
+                        text = { Text(stringResource(R.string.ask_duo)) },
                         containerColor = Color(0xFF8E75C2),
                         contentColor = Color.White
                     )
@@ -523,24 +525,24 @@ fun MergeRequestContent(
                 Tab(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
-                    text = { Text("Overview") }
+                    text = { Text(stringResource(R.string.overview)) }
                 )
                 Tab(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    text = { Text("Commits") }
+                    text = { Text(stringResource(R.string.commits)) }
                 )
                 Tab(
                     selected = selectedTab == 2,
                     onClick = { selectedTab = 2 },
-                    text = { Text("Pipelines") }
+                    text = { Text(stringResource(R.string.pipelines)) }
                 )
                 Tab(
                     selected = selectedTab == 3,
                     onClick = { selectedTab = 3 },
                     text = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("Changes")
+                            Text(stringResource(R.string.changes))
                             val count = state.changes?.changes?.size
                             if (count != null) {
                                 Spacer(Modifier.width(4.dp))
@@ -586,7 +588,7 @@ fun MergeRequestContent(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
-                                            "DESCRIPTION",
+                                            stringResource(R.string.description).uppercase(),
                                             style = MaterialTheme.typography.labelSmall,
                                             fontWeight = FontWeight.Bold,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -601,7 +603,7 @@ fun MergeRequestContent(
                                                 ) {
                                                     Icon(
                                                         Icons.Default.Edit,
-                                                        contentDescription = "Edit Description",
+                                                        contentDescription = stringResource(R.string.edit),
                                                         modifier = Modifier.size(16.dp),
                                                         tint = MaterialTheme.colorScheme.primary
                                                     )
@@ -630,7 +632,7 @@ fun MergeRequestContent(
                                                     )
                                                     Spacer(modifier = Modifier.width(6.dp))
                                                     Text(
-                                                        "Summarize with Duo",
+                                                        stringResource(R.string.ask_duo),
                                                         style = MaterialTheme.typography.labelSmall
                                                     )
                                                 }
@@ -655,7 +657,7 @@ fun MergeRequestContent(
 
                 item {
                     Text(
-                        "Activity",
+                        stringResource(R.string.activity),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 16.dp)
@@ -711,7 +713,7 @@ fun MergeRequestContent(
                                 onClick = onLoadMoreDiscussions,
                                 modifier = Modifier.widthIn(max = 320.dp)
                             ) {
-                                Text("Load more discussions")
+                                Text(stringResource(R.string.load_more_discussions))
                             }
                         }
                     }

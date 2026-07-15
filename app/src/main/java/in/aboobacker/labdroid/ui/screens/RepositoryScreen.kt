@@ -74,10 +74,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import `in`.aboobacker.labdroid.R
 import `in`.aboobacker.labdroid.data.model.Branch
 import `in`.aboobacker.labdroid.data.model.Commit
 import `in`.aboobacker.labdroid.data.model.Issue
@@ -113,7 +115,11 @@ fun RepositoryScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var selectedTabIndex by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Files", "Work Items", "Merge Requests")
+    val tabs = listOf(
+        stringResource(R.string.files),
+        stringResource(R.string.work_items),
+        stringResource(R.string.merge_requests)
+    )
     var currentPath by remember(projectId) { mutableStateOf<String?>(null) }
     var currentRef by remember(projectId) { mutableStateOf<String?>(null) }
 
@@ -254,14 +260,14 @@ fun RepositoryScreen(
                                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                                     shape = MaterialTheme.shapes.large
                                 ) {
-                                    Icon(Icons.Default.Add, contentDescription = "New Issue")
+                                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.issues))
                                 }
                             }
 
                             ExtendedFloatingActionButton(
                                 onClick = onDuoClick,
                                 icon = { Icon(Icons.Default.AutoAwesome, null) },
-                                text = { Text("Ask Duo") },
+                                text = { Text(stringResource(R.string.ask_duo)) },
                                 containerColor = Color(0xFF8E75C2),
                                 contentColor = Color.White
                             )

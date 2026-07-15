@@ -54,6 +54,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -63,6 +64,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import `in`.aboobacker.labdroid.ApprovalDecision
 import `in`.aboobacker.labdroid.DuoContextItem
+import `in`.aboobacker.labdroid.R
 import `in`.aboobacker.labdroid.WorkflowStatus
 import `in`.aboobacker.labdroid.ui.components.LocalTopBarActions
 import `in`.aboobacker.labdroid.ui.components.MarkdownText
@@ -124,13 +126,13 @@ fun DuoChatContent(
                 title = {
                     Column {
                         Text(
-                            "GitLab Duo Chat",
+                            stringResource(R.string.duo_chat),
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                         )
                         val statusText = when {
-                            isConnecting -> "Connecting..."
-                            isConnected -> "Connected" + (workflowStatus?.let { " • $it" } ?: "")
-                            else -> "Disconnected"
+                            isConnecting -> stringResource(R.string.connecting)
+                            isConnected -> stringResource(R.string.connected) + (workflowStatus?.let { " • $it" } ?: "")
+                            else -> stringResource(R.string.disconnected)
                         }
                         Text(
                             statusText,
@@ -141,7 +143,7 @@ fun DuoChatContent(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.Close, contentDescription = "Close")
+                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
                     }
                 },
                 actions = {
@@ -152,7 +154,7 @@ fun DuoChatContent(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Clear Chat", style = MaterialTheme.typography.labelLarge)
+                        Text(stringResource(R.string.clear_chat), style = MaterialTheme.typography.labelLarge)
                     }
                 }
             )
@@ -177,12 +179,12 @@ fun DuoChatContent(
                     DuoAvatar()
                     Spacer(modifier = Modifier.height(24.dp))
                     Text(
-                        "Hi, I'm GitLab Duo",
+                        stringResource(R.string.hi_i_am_duo),
                         style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold)
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        "I can help you write code, summarize merge requests, and answer questions about your projects.",
+                        stringResource(R.string.duo_intro),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
@@ -193,7 +195,7 @@ fun DuoChatContent(
 
                 item {
                     DuoMessageBubble(
-                        "How can I assist you with your work today?",
+                        stringResource(R.string.duo_assist_question),
                         "GitLab Duo • Just now"
                     )
                     Spacer(modifier = Modifier.height(32.dp))
@@ -201,7 +203,7 @@ fun DuoChatContent(
 
                 item {
                     Text(
-                        "SUGGESTED ACTIONS",
+                        stringResource(R.string.suggested_actions),
                         style = MaterialTheme.typography.labelLarge.copy(
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp
@@ -227,19 +229,19 @@ fun DuoChatContent(
                     item {
                         SuggestedActionItem(
                             icon = Icons.Default.Description,
-                            text = "Summarize my latest MR",
+                            text = stringResource(R.string.summarize_mr),
                             onClick = { onSendMessage("Summarize my latest MR") }
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         SuggestedActionItem(
                             icon = Icons.Default.Code,
-                            text = "Explain this code snippet",
+                            text = stringResource(R.string.explain_code),
                             onClick = { onSendMessage("Explain this code snippet") }
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         SuggestedActionItem(
                             icon = Icons.Default.Science,
-                            text = "Write a unit test for my changes",
+                            text = stringResource(R.string.write_unit_test),
                             onClick = { onSendMessage("Write a unit test for my changes") }
                         )
                         Spacer(modifier = Modifier.height(24.dp))
@@ -431,7 +433,7 @@ fun ApprovalButtons(
             ),
             modifier = Modifier.padding(end = 8.dp)
         ) {
-            Text("Reject")
+            Text(stringResource(R.string.reject))
         }
         Button(
             onClick = onApprove,
@@ -439,7 +441,7 @@ fun ApprovalButtons(
                 containerColor = Color(0xFF059669) // Success green
             )
         ) {
-            Text("Approve")
+            Text(stringResource(R.string.approve))
         }
     }
 }
@@ -513,7 +515,7 @@ fun DuoInputBar(
                         value = value,
                         onValueChange = onValueChange,
                         modifier = Modifier.weight(1f),
-                        placeholder = { Text("Ask Duo anything...", color = Color.Gray) },
+                        placeholder = { Text(stringResource(R.string.ask_duo_anything), color = Color.Gray) },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Color.Transparent,
                             unfocusedBorderColor = Color.Transparent,
@@ -541,7 +543,7 @@ fun DuoInputBar(
         }
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Duo can make mistakes. Check important info. Learn more",
+            text = stringResource(R.string.duo_mistake_warning),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
             textAlign = TextAlign.Center,
