@@ -1,0 +1,28 @@
+Categories:
+  - Development
+License: MPL-2.0
+SourceCode: https://github.com/aboobacker/labdroid
+IssueTracker: https://github.com/aboobacker/labdroid/issues
+
+Summary: Native GitLab client with Duo Chat
+Description: |-
+    Labdroid is a native Android client for GitLab, providing a seamless mobile
+    experience for managing your projects, issues, and merge requests. It features
+    deep integration with GitLab Duo Chat, enabling AI-powered assistance for
+    code explanation, MR summarization, and more.
+
+RepoType: git
+Repo: https://github.com/aboobacker/labdroid
+
+Builds:
+  - versionName: '1.0'
+    versionCode: 1
+    commit: v1.0
+    subdir: app
+    gradle:
+      - yes
+
+AutoUpdateMode: Version v%v
+UpdateCheckMode: Tags
+CurrentVersion: '1.0'
+CurrentVersionCode: 1

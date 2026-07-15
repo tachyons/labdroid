@@ -1,0 +1,1 @@
+Initial release with GitLab Duo Chat integration, native Android chat features, and project management capabilities.
