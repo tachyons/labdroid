@@ -43,16 +43,24 @@ android {
     signingConfigs {
         create("release") {
             storeFile = file(System.getenv("KEYSTORE_PATH") ?: "release.jks")
-            storePassword = System.getenv("KEYSTORE_PASSWORD")
+            val storePass = System.getenv("KEYSTORE_PASSWORD")
+            val keyPass = System.getenv("KEY_PASSWORD")
+            
+            storePassword = storePass
             keyAlias = System.getenv("KEY_ALIAS")
-            keyPassword = System.getenv("KEY_PASSWORD")
+            // Use storePassword as fallback for keyPassword if not provided
+            keyPassword = if (keyPass.isNullOrEmpty()) storePass else keyPass
         }
     }
 
     buildTypes {
         release {
             val keystorePath = System.getenv("KEYSTORE_PATH") ?: "release.jks"
-            if (file(keystorePath).exists()) {
+            val hasKeystore = file(keystorePath).exists()
+            val hasSecrets = !System.getenv("KEYSTORE_PASSWORD").isNullOrEmpty() &&
+                             !System.getenv("KEY_ALIAS").isNullOrEmpty()
+
+            if (hasKeystore && hasSecrets) {
                 signingConfig = signingConfigs.getByName("release")
             } else {
                 // Fallback to debug signing so the APK is installable even if unsigned
