@@ -36,7 +36,8 @@
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
-                <data android:scheme="labdroid" android:host="duo_chat" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="in.aboobacker.labdroid" android:host="oauth" />
             </intent-filter>
         </activity>
 
