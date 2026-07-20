@@ -54,6 +54,9 @@ android {
             val keystorePath = System.getenv("KEYSTORE_PATH") ?: "release.jks"
             if (file(keystorePath).exists()) {
                 signingConfig = signingConfigs.getByName("release")
+            } else {
+                // Fallback to debug signing so the APK is installable even if unsigned
+                signingConfig = signingConfigs.getByName("debug")
             }
             isMinifyEnabled = true
             isShrinkResources = true
