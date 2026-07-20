@@ -51,7 +51,10 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            val keystorePath = System.getenv("KEYSTORE_PATH") ?: "release.jks"
+            if (file(keystorePath).exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
