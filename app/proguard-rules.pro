@@ -32,3 +32,6 @@
 
 # AppAuth
 -keep class net.openid.appauth.** { *; }
+
+# Tink / Error Prone
+-dontwarn com.google.errorprone.annotations.**
