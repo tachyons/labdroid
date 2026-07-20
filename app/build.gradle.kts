@@ -15,8 +15,23 @@ android {
         applicationId = "in.aboobacker.labdroid"
         minSdk = 29
         targetSdk = 37
-        versionCode = 1
-        versionName = "1.0"
+        
+        val gitVersionName = try {
+            val process = Runtime.getRuntime().exec("git describe --tags --abbrev=0")
+            process.inputStream.bufferedReader().readText().trim().removePrefix("v")
+        } catch (e: Exception) {
+            "1.0"
+        }
+        
+        val gitVersionCode = try {
+            val process = Runtime.getRuntime().exec("git rev-list --count HEAD")
+            process.inputStream.bufferedReader().readText().trim().toInt()
+        } catch (e: Exception) {
+            1
+        }
+
+        versionCode = gitVersionCode
+        versionName = gitVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         manifestPlaceholders["appAuthRedirectScheme"] = "in.aboobacker.labdroid"
