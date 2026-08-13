@@ -60,8 +60,20 @@ class GitLabWorkflowClient(
     private val cleanedUp = AtomicBoolean(false)
     private var lastSendTime = 0L
 
+    @Volatile
+    private var generation = 0
+
     var currentWorkflowId: String? = null
         private set
+
+    private var lastStartRequest: StartRequest? = null
+    private var lastOptions: WorkflowWebSocketOptions? = null
+
+    /**
+     * Tool names the user approved with "remember" semantics during this session.
+     * Merged into `preapproved_tools` on every subsequent StartRequest.
+     */
+    private val sessionPreapprovedTools = mutableListOf<String>()
 
     private val scheduler = Executors.newSingleThreadScheduledExecutor { r ->
         Thread(r, "gitlab-workflow-timer").apply { isDaemon = true }
@@ -137,6 +149,7 @@ class GitLabWorkflowClient(
         Log.d(TAG, "Connecting to Duo Workflow at ${options.instanceUrl}")
         validateOptions(options)
         eventCallback = onEvent
+        lastOptions = options
         closed.set(false)
         cleanedUp.set(false)
 
@@ -146,12 +159,18 @@ class GitLabWorkflowClient(
         Log.d(TAG, "OkHttp Request URL: ${request.url}")
         Log.d(TAG, "OkHttp Request Scheme: ${request.url.scheme}")
 
+        val myGeneration = ++generation
+
         suspendCancellableCoroutine { cont ->
             var resolved = false
 
             val listener = object : WebSocketListener() {
                 override fun onOpen(webSocket: WebSocket, response: Response) {
                     Log.i(TAG, "WebSocket Opened: ${response.code} ${response.message}")
+                    if (myGeneration != generation) {
+                        webSocket.close(1000, "Stale connection")
+                        return
+                    }
                     socket = webSocket
                     resolved = true
                     startKeepalive()
@@ -160,11 +179,13 @@ class GitLabWorkflowClient(
                 }
 
                 override fun onMessage(webSocket: WebSocket, text: String) {
+                    if (myGeneration != generation) return
                     Log.d(TAG, "WS Message (text): $text")
                     handleMessage(text)
                 }
 
                 override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
+                    if (myGeneration != generation) return
                     val text = bytes.utf8()
                     Log.d(TAG, "WS Message (bytes): $text")
                     handleMessage(text)
@@ -181,6 +202,7 @@ class GitLabWorkflowClient(
                             Log.e(TAG, "Could not read error body: ${e.message}")
                         }
                     }
+                    if (myGeneration != generation) return
                     cleanup()
                     if (!resolved) {
                         cont.resumeWithException(t)
@@ -196,6 +218,7 @@ class GitLabWorkflowClient(
 
                 override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                     Log.w(TAG, "WebSocket Closed: $code / $reason")
+                    if (myGeneration != generation) return
                     cleanup()
                     if (!resolved) {
                         cont.resumeWithException(
@@ -225,8 +248,17 @@ class GitLabWorkflowClient(
      * Call after [connect] returns successfully.
      */
     fun sendStartRequest(request: StartRequest) {
-        currentWorkflowId = request.workflowID
-        send(ClientEvent.Start(request))
+        val merged = if (sessionPreapprovedTools.isEmpty()) {
+            request
+        } else {
+            request.copy(
+                preapprovedTools = ((request.preapprovedTools
+                    ?: emptyList()) + sessionPreapprovedTools).distinct()
+            )
+        }
+        currentWorkflowId = merged.workflowID
+        lastStartRequest = merged
+        send(ClientEvent.Start(merged))
     }
 
     /**
@@ -250,30 +282,63 @@ class GitLabWorkflowClient(
 
     /**
      * Send an [ApprovalDecision] back to DWS for a pending tool-call approval.
-     * Wraps the decision into a new [StartRequest] on the existing workflow.
      *
-     * @param workflowID  The same workflowID used in the original [StartRequest]
-     * @param decision    Approval or rejection
-     * @param goal        The original goal of the workflow
-     * @param projectId   Optional project ID context
-     * @param rootNamespaceId Optional root namespace ID context
+     * Mirrors `approveAndResume` in gitlab-workflow-language-model.ts: DWS closes
+     * the WebSocket while approval is pending, so the client reconnects and
+     * re-sends the original [StartRequest] (same workflowID) carrying an
+     * `approval`/`rejection` payload plus updated `preapproved_tools`.
+     *
+     * @param decision          Approval or rejection
+     * @param tools             The tools awaiting approval (from [WorkflowClientEvent.ApprovalRequired])
+     * @param rejectionMessage  Optional message sent on rejection
+     * @param rememberApproval  Persist approval for the rest of this session
      */
-    fun sendApprovalDecision(
-        workflowID: String,
+    suspend fun sendApprovalDecision(
         decision: ApprovalDecision,
-        goal: String,
-        projectId: String? = null,
-        rootNamespaceId: String? = null
+        tools: List<ApprovalTool>,
+        rejectionMessage: String? = null,
+        rememberApproval: Boolean = false,
     ) {
-        send(
-            ClientEvent.Start(
-                StartRequest(
-                    workflowID = workflowID,
-                    goal = goal,
-                    approval = decision,
-                    projectId = projectId,
-                    rootNamespaceId = rootNamespaceId
-                )
+        val startReq = lastStartRequest
+            ?: throw IllegalStateException("No StartRequest to resume for approval")
+        val options = lastOptions
+            ?: throw IllegalStateException("No connection options available for approval")
+        val callback = eventCallback
+            ?: throw IllegalStateException("No event callback registered")
+
+        val approved = decision == ApprovalDecision.APPROVE
+
+        val approval: ApprovalPayload = if (approved) {
+            ApprovalPayload.Approve(
+                toolName = tools.firstOrNull()?.name,
+                toolArgsJson = tools.firstOrNull()?.args,
+                rememberApproval = rememberApproval,
+            )
+        } else {
+            ApprovalPayload.Reject(rejectionMessage ?: "User rejected")
+        }
+
+        val preapproved = if (approved) {
+            ((startReq.preapprovedTools ?: emptyList()) + tools.map { it.name }).distinct()
+        } else {
+            startReq.preapprovedTools
+        }
+
+        if (approved && rememberApproval) {
+            tools.forEach { tool ->
+                if (tool.name !in sessionPreapprovedTools) sessionPreapprovedTools.add(tool.name)
+            }
+        }
+
+        // DWS closed (or will close) the old socket while approval was pending.
+        // Discard it and reconnect before resuming the workflow.
+        close()
+        connect(options, callback)
+
+        sendStartRequest(
+            startReq.copy(
+                approval = approval,
+                preapprovedTools = preapproved,
             )
         )
     }

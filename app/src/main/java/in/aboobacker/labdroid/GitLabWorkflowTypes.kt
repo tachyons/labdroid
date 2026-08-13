@@ -40,6 +40,27 @@ enum class ApprovalDecision {
 }
 
 // ---------------------------------------------------------------------------
+// Approval payloads (mirrors ApprovalDecision in gitlab-workflow-types.ts)
+// ---------------------------------------------------------------------------
+
+data class ApprovalTool(
+    val name: String,
+    val args: String
+)
+
+sealed class ApprovalPayload {
+    data class Approve(
+        val toolName: String? = null,
+        val toolArgsJson: String? = null,
+        val rememberApproval: Boolean = false
+    ) : ApprovalPayload()
+
+    data class Reject(
+        val message: String = "User rejected"
+    ) : ApprovalPayload()
+}
+
+// ---------------------------------------------------------------------------
 // Data Classes
 // ---------------------------------------------------------------------------
 
@@ -63,7 +84,8 @@ data class StartRequest(
     val workflowMetadata: String? = null,
     val additional_context: List<Map<String, Any>>? = null,
     val clientCapabilities: List<String> = listOf("incremental_streaming", "web_search"),
-    val approval: ApprovalDecision? = null,
+    val approval: ApprovalPayload? = null,
+    val preapprovedTools: List<String>? = null,
     val projectId: String? = null,
     val rootNamespaceId: String? = null
 )
@@ -191,7 +213,7 @@ sealed class WorkflowClientEvent {
     data class UnsupportedToolRequest(val requestID: String, val toolName: String) :
         WorkflowClientEvent()
 
-    data class ApprovalRequired(val tools: List<String>) : WorkflowClientEvent()
+    data class ApprovalRequired(val tools: List<ApprovalTool>) : WorkflowClientEvent()
     object Completed : WorkflowClientEvent()
     data class Failed(val error: Throwable) : WorkflowClientEvent()
     data class Closed(val code: Int, val reason: String) : WorkflowClientEvent()
@@ -219,12 +241,27 @@ sealed class ClientEvent {
 
                 startRequest.put("goal", request.goal)
 
-                if (request.approval != null) {
-                    val approvalObj = JSONObject()
-                    approvalObj.put("decision", request.approval.name.lowercase())
-                    startRequest.put("approval", approvalObj)
-                } else {
-                    startRequest.put("approval", JSONObject())
+                when (val approval = request.approval) {
+                    is ApprovalPayload.Approve -> {
+                        val inner = JSONObject()
+                        approval.toolName?.let { inner.put("tool_name", it) }
+                        approval.toolArgsJson?.let { inner.put("tool_args_json", it) }
+                        if (approval.rememberApproval) inner.put("remember_approval", true)
+                        startRequest.put("approval", JSONObject().put("approval", inner))
+                    }
+
+                    is ApprovalPayload.Reject -> {
+                        val inner = JSONObject().put("message", approval.message)
+                        startRequest.put("approval", JSONObject().put("rejection", inner))
+                    }
+
+                    null -> startRequest.put("approval", JSONObject())
+                }
+
+                request.preapprovedTools?.let { tools ->
+                    val toolsArray = org.json.JSONArray()
+                    tools.forEach { toolsArray.put(it) }
+                    startRequest.put("preapproved_tools", toolsArray)
                 }
 
                 startRequest.put("useOrbit", false)
@@ -272,18 +309,38 @@ sealed class ClientEvent {
 // Helpers
 // ---------------------------------------------------------------------------
 
-fun extractApprovalTools(checkpoint: CheckpointData): List<String> {
+fun extractApprovalTools(checkpoint: CheckpointData): List<ApprovalTool> {
     if (checkpoint.rawJson == null) return emptyList()
     try {
         val json = JSONObject(checkpoint.rawJson)
         val channelValues = json.optJSONObject("channel_values") ?: return emptyList()
-        val toolsToApprove = channelValues.optJSONArray("tools_to_approve") ?: return emptyList()
 
-        val tools = mutableListOf<String>()
-        for (i in 0 until toolsToApprove.length()) {
-            val tool = toolsToApprove.optJSONObject(i)
-            tool?.optString("name")?.let { tools.add(it) }
+        val tools = mutableListOf<ApprovalTool>()
+
+        val uiChatLog = channelValues.optJSONArray("ui_chat_log")
+        if (uiChatLog != null) {
+            for (i in 0 until uiChatLog.length()) {
+                val entry = uiChatLog.optJSONObject(i) ?: continue
+                if (entry.optString("message_type") != "request") continue
+                val toolInfo = entry.optJSONObject("tool_info") ?: continue
+                val name = toolInfo.optString("name").takeIf { it.isNotEmpty() } ?: continue
+                val args = toolInfo.optJSONObject("args")?.toString() ?: "{}"
+                tools.add(ApprovalTool(name = name, args = args))
+            }
         }
+
+        if (tools.isEmpty()) {
+            val toolsToApprove = channelValues.optJSONArray("tools_to_approve")
+            if (toolsToApprove != null) {
+                for (i in 0 until toolsToApprove.length()) {
+                    val tool = toolsToApprove.optJSONObject(i) ?: continue
+                    val name = tool.optString("name").takeIf { it.isNotEmpty() } ?: continue
+                    val args = tool.optJSONObject("args")?.toString() ?: "{}"
+                    tools.add(ApprovalTool(name = name, args = args))
+                }
+            }
+        }
+
         return tools
     } catch (e: Exception) {
         return emptyList()

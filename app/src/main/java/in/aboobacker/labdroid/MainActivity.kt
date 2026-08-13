@@ -69,6 +69,7 @@ import androidx.wear.compose.material3.MaterialTheme as WearMaterialTheme
 class MainActivity : ComponentActivity() {
 
     private lateinit var authService: AuthorizationService
+    private val authViewModel: AuthViewModel by viewModels()
 
     private val authLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
@@ -77,7 +78,6 @@ class MainActivity : ComponentActivity() {
         if (data != null) {
             val response = AuthorizationResponse.fromIntent(data)
             val ex = AuthorizationException.fromIntent(data)
-            val authViewModel: AuthViewModel by viewModels()
             if (response != null) {
                 authViewModel.onAuthResponse(response)
             } else if (ex != null) {
@@ -121,7 +121,6 @@ class MainActivity : ComponentActivity() {
 
             if (isWatch) {
                 WearMaterialTheme {
-                    val authViewModel: AuthViewModel = hiltViewModel()
                     val authState by authViewModel.authState.collectAsState()
 
                     LaunchedEffect(authState) {
@@ -191,7 +190,6 @@ class MainActivity : ComponentActivity() {
                 }
             } else {
                 LabdroidTheme(darkTheme = isDarkMode) {
-                    val authViewModel: AuthViewModel = hiltViewModel()
                     val authState by authViewModel.authState.collectAsState()
                     val currentUser by authViewModel.currentUser.collectAsState()
 

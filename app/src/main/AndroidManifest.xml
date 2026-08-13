@@ -24,20 +24,12 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:label="@string/app_name"
+            android:taskAffinity="in.aboobacker.labdroid"
             android:theme="@style/Theme.App.Starting"
-            android:resizeableActivity="true"
-            android:allowEmbedded="true"
-            android:documentLaunchMode="always">
+            android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="in.aboobacker.labdroid" android:host="oauth" />
             </intent-filter>
         </activity>
 

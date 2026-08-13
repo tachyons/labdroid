@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import `in`.aboobacker.labdroid.ApprovalDecision
+import `in`.aboobacker.labdroid.ApprovalTool
 import `in`.aboobacker.labdroid.BuildConfig
 import `in`.aboobacker.labdroid.DuoContextItem
 import `in`.aboobacker.labdroid.GitLabWorkflowClient
@@ -65,8 +66,8 @@ class DuoChatViewModel @Inject constructor(
     private val _workflowStatus = MutableStateFlow<WorkflowStatus?>(null)
     val workflowStatus: StateFlow<WorkflowStatus?> = _workflowStatus.asStateFlow()
 
-    private val _pendingApprovalTools = MutableStateFlow<List<String>>(emptyList())
-    val pendingApprovalTools: StateFlow<List<String>> = _pendingApprovalTools.asStateFlow()
+    private val _pendingApprovalTools = MutableStateFlow<List<ApprovalTool>>(emptyList())
+    val pendingApprovalTools: StateFlow<List<ApprovalTool>> = _pendingApprovalTools.asStateFlow()
 
     private var currentProjectId: Long? = null
     private var currentRootNamespaceId: Long? = null
@@ -191,11 +192,17 @@ class DuoChatViewModel @Inject constructor(
             }
         }
 
+        val workflowMetadata = JSONObject().apply {
+            put("extended_logging", false)
+            put("tool_approval_for_session_enabled", true)
+        }.toString()
+
         workflowClient.sendStartRequest(
             StartRequest(
                 workflowID = workflowId,
                 goal = goal,
                 workflowDefinition = "chat",
+                workflowMetadata = workflowMetadata,
                 projectId = currentProjectId?.toString(),
                 rootNamespaceId = currentRootNamespaceId?.toString(),
                 additional_context = additionalContextMaps
@@ -227,7 +234,7 @@ class DuoChatViewModel @Inject constructor(
                                 text = content ?: "Duo needs your approval to run some tools.",
                                 isLoading = false,
                                 requiresApproval = true,
-                                toolNames = tools
+                                toolNames = tools.map { it.name }
                             )
                         }
                     }
@@ -292,11 +299,11 @@ class DuoChatViewModel @Inject constructor(
                         _pendingApprovalTools.value = event.tools
                         _messages.add(
                             ChatMessage(
-                                text = "Duo needs your approval to run the following tools: ${event.tools.joinToString()}",
+                                text = "Duo needs your approval to run the following tools: ${event.tools.joinToString { it.name }}",
                                 isFromUser = false,
                                 isSystem = false,
                                 requiresApproval = true,
-                                toolNames = event.tools
+                                toolNames = event.tools.map { it.name }
                             )
                         )
                     }
@@ -306,8 +313,7 @@ class DuoChatViewModel @Inject constructor(
     }
 
     fun handleApprovalDecision(decision: ApprovalDecision) {
-        val workflowId = workflowClient.currentWorkflowId ?: return
-        val goal = currentGoal ?: ""
+        val tools = _pendingApprovalTools.value
         _pendingApprovalTools.value = emptyList()
 
         // Mark the last approval message as handled
@@ -318,13 +324,22 @@ class DuoChatViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            workflowClient.sendApprovalDecision(
-                workflowID = workflowId,
-                decision = decision,
-                goal = goal,
-                projectId = currentProjectId?.toString(),
-                rootNamespaceId = currentRootNamespaceId?.toString()
-            )
+            try {
+                workflowClient.sendApprovalDecision(
+                    decision = decision,
+                    tools = tools
+                )
+                _isConnected.value = true
+            } catch (e: Exception) {
+                Log.e("DuoChatViewModel", "Failed to send approval decision", e)
+                _messages.add(
+                    ChatMessage(
+                        text = "Failed to send approval decision: ${e.message}",
+                        isFromUser = false,
+                        isSystem = true
+                    )
+                )
+            }
         }
     }
 
